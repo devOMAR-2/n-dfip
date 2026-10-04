@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sign in</title>
+    <link rel="stylesheet" href="./styles/shared.css" />
+    <script src="./scripts/auth.js"></script>
+    <script>
+      // Already signed in: skip the form
+      if (Auth.findUser(Auth.getSessionId())) window.location.replace(Auth.HOME_PAGE);
+    </script>
+  </head>
+  <body>
+    <main class="auth-page">
+      <h1 class="app-title">The Clinical Platform</h1>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title">Sign in</h2>
+          <p class="card-description">Use your employee ID and password.</p>
+        </div>
+
+        <div class="card-content">
+          <form class="form" id="sign-in-form" novalidate>
+            <div class="field">
+              <label class="label" for="employee-id">Employee ID</label>
+              <input
+                class="input"
+                id="employee-id"
+                name="employeeId"
+                autocomplete="username"
+                inputmode="numeric"
+                autofocus
+              />
+              <p class="field-error" id="employee-id-error" hidden>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                <span></span>
+              </p>
+            </div>
+
+            <div class="field">
+              <label class="label" for="password">Password</label>
+              <div class="input-group">
+                <input
+                  class="input"
+                  id="password"
+                  name="password"
+                  type="password"
+                  autocomplete="current-password"
+                />
+                <button
+                  type="button"
+                  class="btn btn-icon"
+                  id="toggle-password"
+                  aria-label="Show password"
+                  aria-pressed="false"
+                >
+                  <svg class="icon-eye" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" /><circle cx="12" cy="12" r="3" /></svg>
+                  <svg class="icon-eye-off" hidden xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" /><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" /><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" /><path d="m2 2 20 20" /></svg>
+                </button>
+              </div>
+              <p class="field-error" id="password-error" hidden>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                <span></span>
+              </p>
+            </div>
+
+            <div class="checkbox-row">
+              <input class="checkbox" type="checkbox" id="remember" name="remember" />
+              <label class="label label--normal" for="remember">Remember me</label>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">Sign in</button>
+          </form>
+        </div>
+
+        <div class="card-footer">
+          <p class="eyebrow">Demo accounts</p>
+          <button
+            type="button"
+            class="demo-account"
+            data-employee-id="100001"
+            data-password="Admin@123"
+          >
+            <span class="demo-account__head">
+              <span>System Administrator</span>
+              <span class="badge badge-secondary">Administrator</span>
+            </span>
+            <span class="demo-account__creds">
+              <span>Employee ID</span>
+              <code>100001</code>
+              <span>Password</span>
+              <code>Admin@123</code>
+            </span>
+            <span class="demo-account__hint">Click to fill the form</span>
+          </button>
+          <button
+            type="button"
+            class="demo-account"
+            data-employee-id="100002"
+            data-password="Nurse@123"
+          >
+            <span class="demo-account__head">
+              <span>Amal Saeed Al-Harthi</span>
+              <span class="badge badge-secondary">Screening Nurse</span>
+            </span>
+            <span class="demo-account__creds">
+              <span>Employee ID</span>
+              <code>100002</code>
+              <span>Password</span>
+              <code>Nurse@123</code>
+            </span>
+            <span class="demo-account__hint">Click to fill the form</span>
+          </button>
+          <button
+            type="button"
+            class="demo-account"
+            data-employee-id="100003"
+            data-password="Doctor@123"
+          >
+            <span class="demo-account__head">
+              <span>Yousef Khalid Al-Rashidi</span>
+              <span class="badge badge-secondary">Practitioner</span>
+            </span>
+            <span class="demo-account__creds">
+              <span>Employee ID</span>
+              <code>100003</code>
+              <span>Password</span>
+              <code>Doctor@123</code>
+            </span>
+            <span class="demo-account__hint">Click to fill the form</span>
+          </button>
+        </div>
+      </div>
+
+      <p class="page-note">Prototype — not for clinical use.</p>
+    </main>
+
+    <script>
+      const form = document.getElementById("sign-in-form");
+      const fields = {
+        employeeId: {
+          input: document.getElementById("employee-id"),
+          error: document.getElementById("employee-id-error"),
+        },
+        password: {
+          input: document.getElementById("password"),
+          error: document.getElementById("password-error"),
+        },
+      };
+      const remember = document.getElementById("remember");
+      let credentialsError = false;
+
+      function showError(name, message) {
+        const { input, error } = fields[name];
+        error.querySelector("span").textContent = message;
+        error.hidden = false;
+        input.setAttribute("aria-invalid", "true");
+        input.setAttribute("aria-describedby", error.id);
+      }
+
+      function clearError(name) {
+        const { input, error } = fields[name];
+        error.hidden = true;
+        input.removeAttribute("aria-invalid");
+        input.removeAttribute("aria-describedby");
+      }
+
+      function clearAllErrors() {
+        credentialsError = false;
+        Object.keys(fields).forEach(clearError);
+      }
+
+      // Typing clears that field's error; a wrong-credentials error clears both
+      for (const name of Object.keys(fields)) {
+        fields[name].input.addEventListener("input", () => {
+          if (credentialsError) clearAllErrors();
+          else clearError(name);
+        });
+      }
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        clearAllErrors();
+
+        const employeeId = fields.employeeId.input.value;
+        const password = fields.password.input.value;
+
+        if (!employeeId.trim()) showError("employeeId", "Enter your employee ID.");
+        if (!password) showError("password", "Enter your password.");
+        if (!employeeId.trim() || !password) {
+          (employeeId.trim() ? fields.password : fields.employeeId).input.focus();
+          return;
+        }
+
+        if (Auth.signIn(employeeId, password, remember.checked)) {
+          window.location.replace(Auth.HOME_PAGE);
+          return;
+        }
+
+        credentialsError = true;
+        showError("password", "Incorrect employee ID or password.");
+        fields.employeeId.input.setAttribute("aria-invalid", "true");
+        fields.employeeId.input.setAttribute("aria-describedby", fields.password.error.id);
+        fields.password.input.value = "";
+        fields.password.input.focus();
+      });
+
+      // Show / hide password
+      const toggle = document.getElementById("toggle-password");
+      toggle.addEventListener("click", () => {
+        const show = fields.password.input.type === "password";
+        fields.password.input.type = show ? "text" : "password";
+        toggle.setAttribute("aria-pressed", String(show));
+        toggle.setAttribute("aria-label", show ? "Hide password" : "Show password");
+        toggle.querySelector(".icon-eye").toggleAttribute("hidden", show);
+        toggle.querySelector(".icon-eye-off").toggleAttribute("hidden", !show);
+      });
+
+      // Demo account cards fill the form
+      document.querySelectorAll(".demo-account").forEach((card) => {
+        card.addEventListener("click", () => {
+          fields.employeeId.input.value = card.dataset.employeeId;
+          fields.password.input.value = card.dataset.password;
+          clearAllErrors();
+        });
+      });
+    </script>
+  </body>
+</html>

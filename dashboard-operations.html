@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Operations dashboard</title>
+    <link rel="stylesheet" href="./styles/shared.css" />
+    <script src="./scripts/auth.js"></script>
+    <script>
+      // Not signed in: back to the sign-in page
+      if (!Auth.getSessionId()) window.location.replace(Auth.LOGIN_PAGE);
+    </script>
+  </head>
+  <body>
+    <header class="app-header">
+      <a class="app-title" href="./home.html">The Clinical Platform</a>
+
+      <nav class="app-nav" aria-label="Main">
+        <a href="./home.html">Home</a>
+        <a href="./dashboard.html" aria-current="page">Dashboard</a>
+        <a href="./settings.html">Settings</a>
+      </nav>
+
+      <div class="user-menu">
+        <button
+          type="button"
+          class="avatar-button"
+          id="user-menu-button"
+          aria-haspopup="menu"
+          aria-expanded="false"
+          aria-controls="user-menu"
+          aria-label="Open user menu"
+        >
+          <span id="user-initials">?</span>
+        </button>
+
+        <div class="menu" id="user-menu" role="menu" aria-labelledby="user-menu-button" hidden>
+          <button type="button" class="menu-item" role="menuitem" data-action="account">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+            Account
+          </button>
+          <button type="button" class="menu-item" role="menuitem" data-action="settings">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
+            Settings
+          </button>
+          <hr class="menu-separator" role="separator" />
+          <button type="button" class="menu-item menu-item--destructive" role="menuitem" data-action="logout">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></svg>
+            Log out
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-content">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="./home.html">Home</a>
+        <span aria-hidden="true">/</span>
+        <a href="./dashboard.html">Dashboard</a>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">Operations</span>
+      </nav>
+
+      <div class="page-header">
+        <h1 class="page-title">Operations dashboard</h1>
+        <p class="page-subtitle">Diabetic Foot clinic · Demo data, generated for illustration</p>
+      </div>
+
+      <!-- One filter row scopes everything below it -->
+      <section class="filter-bar" aria-label="Date range">
+        <div class="filter-bar__row">
+          <span class="filter-bar__label"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" /></svg>Date range</span>
+          <div class="preset-group" role="group" aria-label="Date range presets">
+            <button type="button" class="preset" data-preset="7d" aria-pressed="false">Last 7 days</button>
+            <button type="button" class="preset" data-preset="30d" aria-pressed="true">Last 30 days</button>
+            <button type="button" class="preset" data-preset="90d" aria-pressed="false">Last 90 days</button>
+            <button type="button" class="preset" data-preset="ytd" aria-pressed="false">Year to date</button>
+            <button type="button" class="preset" data-preset="12m" aria-pressed="false">Last 12 months</button>
+            <button type="button" class="preset" data-preset="custom" aria-pressed="false">Custom</button>
+          </div>
+        </div>
+        <div class="custom-range" id="custom-range" hidden>
+          <div class="q">
+            <label class="label" for="range-from">From</label>
+            <input class="input" type="date" id="range-from" />
+            <p class="field-error" hidden><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg><span></span></p>
+          </div>
+          <div class="q">
+            <label class="label" for="range-to">To</label>
+            <input class="input" type="date" id="range-to" />
+            <p class="field-error" hidden><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg><span></span></p>
+          </div>
+          <button type="button" class="btn btn-primary" id="apply-range">Apply</button>
+        </div>
+        <p class="field-hint" id="range-summary" aria-live="polite"></p>
+      </section>
+
+      <section class="dash-card" aria-labelledby="ops-title">
+        <h2 class="sr-only" id="ops-title">Charts</h2>
+        <div class="kpi-grid" id="ops-kpis"></div>
+        <div class="chart-grid" id="ops-charts"></div>
+      </section>
+
+    </main>
+
+    <script src="./scripts/user-menu.js"></script>
+    <script src="./scripts/screening-store.js"></script>
+    <script src="./scripts/dashboard-data.js"></script>
+    <script src="./scripts/charts.js"></script>
+    <script src="./scripts/dashboard.js"></script>
+  </body>
+</html>

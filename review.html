@@ -1,0 +1,1278 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Practitioner Review</title>
+    <link rel="stylesheet" href="./styles/shared.css" />
+    <script src="./scripts/auth.js"></script>
+    <script>
+      // Not signed in: back to the sign-in page
+      if (!Auth.getSessionId()) window.location.replace(Auth.LOGIN_PAGE);
+      // Needs a screening id: review.html?id=…
+      else if (!new URLSearchParams(location.search).get("id")) window.location.replace("./diabetic-foot.html");
+    </script>
+  </head>
+  <body>
+    <header class="app-header">
+      <a class="app-title" href="./home.html">The Clinical Platform</a>
+
+      <nav class="app-nav" aria-label="Main">
+        <a href="./home.html">Home</a>
+        <a href="./dashboard.html">Dashboard</a>
+        <a href="./settings.html">Settings</a>
+      </nav>
+
+      <div class="user-menu">
+        <button
+          type="button"
+          class="avatar-button"
+          id="user-menu-button"
+          aria-haspopup="menu"
+          aria-expanded="false"
+          aria-controls="user-menu"
+          aria-label="Open user menu"
+        >
+          <span id="user-initials">?</span>
+        </button>
+
+        <div class="menu" id="user-menu" role="menu" aria-labelledby="user-menu-button" hidden>
+          <button type="button" class="menu-item" role="menuitem" data-action="account">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+            Account
+          </button>
+          <button type="button" class="menu-item" role="menuitem" data-action="settings">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
+            Settings
+          </button>
+          <hr class="menu-separator" role="separator" />
+          <button type="button" class="menu-item menu-item--destructive" role="menuitem" data-action="logout">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></svg>
+            Log out
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-content page-content--with-actions">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="./home.html">Home</a>
+        <span aria-hidden="true">/</span>
+        <a href="./diabetic-foot.html">Diabetic Foot</a>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">Practitioner Review</span>
+      </nav>
+
+      <div class="page-header page-header--split">
+        <h1 class="page-title">Practitioner Review</h1>
+        <div class="page-header__actions">
+          <span class="badge" id="review-status"></span>
+          <button type="button" class="btn btn-outline" id="toggle-sections">Expand all</button>
+        </div>
+      </div>
+
+      <div class="callout callout-success" id="review-signed" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+        <div><strong>Signed and locked</strong><p id="review-signed-text"></p></div>
+      </div>
+
+      <!-- Patient -->
+      <section class="patient-summary" aria-labelledby="patient-name">
+        <div class="patient-summary__header">
+          <span class="patient-avatar" data-field="initials" aria-hidden="true"></span>
+          <div class="patient-summary__identity">
+            <h2 class="patient-summary__name" id="patient-name" data-field="name"></h2>
+            <dl class="patient-meta">
+              <div><dt>File no.</dt><dd data-field="fileNumber"></dd></div>
+              <div><dt>National ID</dt><dd data-field="nationalId"></dd></div>
+              <div><dt>Age</dt><dd data-field="age"></dd></div>
+              <div><dt>Sex</dt><dd data-field="sex"></dd></div>
+              <div><dt>Diabetes</dt><dd data-field="diabetes"></dd></div>
+              <div><dt>Last HbA1c</dt><dd data-field="hba1c"></dd></div>
+            </dl>
+          </div>
+        </div>
+        <div class="patient-summary__badges">
+          <span class="badge badge-secondary" data-field="careLevel"></span>
+          <span class="badge badge-secondary" data-field="allergies"></span>
+          <span class="badge badge-muted" data-field="screenedBy"></span>
+        </div>
+      </section>
+
+      <!-- Clinical alerts: kept at the top so urgent concerns are seen first -->
+      <section class="alerts-panel" aria-labelledby="alerts-title">
+        <h2 class="alerts-panel__title" id="alerts-title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" x2="4" y1="22" y2="15" /></svg>Clinical alerts</h2>
+        <ul class="flag-list" id="review-alerts" aria-live="polite"></ul>
+        <p class="field-hint" id="review-alerts-empty" hidden>No alerts.</p>
+      </section>
+
+      <form class="screening-form" id="review-form" novalidate>
+        <details class="form-section" data-section="1" open>
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">1</span>
+            <span class="form-section__title"><span class="sr-only">Section 1: </span>Screening Findings</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="M12 11h4" /><path d="M12 16h4" /><path d="M8 11h.01" /><path d="M8 16h.01" /></svg>Nurse findings</h3>
+              <p class="field-hint">Nurse entries from Part 1. Correcting a value keeps the original visible, with who changed it and when.</p>
+              <div class="findings" data-findings></div>
+            </section>
+          </div>
+        </details>
+
+        <details class="form-section" data-section="2" open>
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">2</span>
+            <span class="form-section__title"><span class="sr-only">Section 2: </span>System Recommendations</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" /></svg>Neuropathy &amp; circulation</h3>
+              <p class="field-hint">Draft rules: confirm or override each foot. The risk category is calculated from your decisions.</p>
+              <div class="rec-grid" data-recs="foot"></div>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 14 4-4" /><path d="M3.34 19a10 10 0 1 1 17.32 0" /></svg>Risk category</h3>
+              <div class="rec-grid" data-recs="risk"></div>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" x2="4" y1="22" y2="15" /></svg>Escalation</h3>
+              <div class="rec-grid" data-recs="escalation"></div>
+            </section>
+          </div>
+        </details>
+
+        <details class="form-section" data-section="3">
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">3</span>
+            <span class="form-section__title"><span class="sr-only">Section 3: </span>Wound Evaluation</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /><circle cx="12" cy="10" r="3" /></svg>Ulcers</h3>
+              <p class="field-hint" data-no-wounds hidden>No ulcers recorded by the nurse. Nothing to evaluate.</p>
+              <div class="wound-list">
+                <fieldset class="ulcer-card wound-card" data-wound="1" hidden>
+                  <legend class="foot-card__title">Ulcer 1 · <span data-wound-location></span></legend>
+                  <fieldset class="q" data-required="radio" data-error="Choose the onset.">
+                    <legend class="label">Onset / duration</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="r.w.1.onset" value="lt1w" /><span>&lt; 1 week</span></label>
+                      <label class="chip"><input type="radio" name="r.w.1.onset" value="1-4w" /><span>1–4 weeks</span></label>
+                      <label class="chip"><input type="radio" name="r.w.1.onset" value="1-3m" /><span>1–3 months</span></label>
+                      <label class="chip"><input type="radio" name="r.w.1.onset" value="gt3m" /><span>&gt; 3 months</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <fieldset class="q" data-required="radio" data-error="Choose the ulcer type.">
+                    <legend class="label">Type / cause</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="r.w.1.type" value="neuropathic" /><span>Neuropathic</span></label>
+                      <label class="chip"><input type="radio" name="r.w.1.type" value="ischaemic" /><span>Ischaemic</span></label>
+                      <label class="chip"><input type="radio" name="r.w.1.type" value="neuroischaemic" /><span>Neuro-ischaemic</span></label>
+                      <label class="chip"><input type="radio" name="r.w.1.type" value="pressure" /><span>Pressure</span></label>
+                      <label class="chip"><input type="radio" name="r.w.1.type" value="trauma" /><span>Trauma</span></label>
+                      <label class="chip"><input type="radio" name="r.w.1.type" value="surgical" /><span>Surgical</span></label>
+                      <label class="chip"><input type="radio" name="r.w.1.type" value="other" /><span>Other</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="q-row">
+                    <div class="q" data-required="value" data-error="Enter the length (0.1–40 cm).">
+                      <label class="label" for="f-r-w-1-length">Length</label>
+                      <div class="input-unit">
+                        <input class="input" id="f-r-w-1-length" name="r.w.1.length" type="number" inputmode="decimal" step="0.1" min="0.1" max="40" />
+                        <span class="input-unit__suffix">cm</span>
+                      </div>
+                      <p class="field-error" hidden>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                        <span></span>
+                      </p>
+                    </div>
+                    <div class="q" data-required="value" data-error="Enter the width (0.1–40 cm).">
+                      <label class="label" for="f-r-w-1-width">Width</label>
+                      <div class="input-unit">
+                        <input class="input" id="f-r-w-1-width" name="r.w.1.width" type="number" inputmode="decimal" step="0.1" min="0.1" max="40" />
+                        <span class="input-unit__suffix">cm</span>
+                      </div>
+                      <p class="field-error" hidden>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                        <span></span>
+                      </p>
+                    </div>
+                    <div class="q" data-required="value" data-error="Enter the depth (0–10 cm).">
+                      <label class="label" for="f-r-w-1-depth">Depth</label>
+                      <div class="input-unit">
+                        <input class="input" id="f-r-w-1-depth" name="r.w.1.depth" type="number" inputmode="decimal" step="0.1" min="0" max="10" />
+                        <span class="input-unit__suffix">cm</span>
+                      </div>
+                      <p class="field-error" hidden>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                        <span></span>
+                      </p>
+                    </div>
+                  </div>
+                  <fieldset class="q" data-required="any" data-error="Choose the tissue types present.">
+                    <legend class="label">Tissue bed</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="checkbox" name="r.w.1.tissue" value="granulation" /><span>Granulation</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.1.tissue" value="slough" /><span>Slough</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.1.tissue" value="necrosis" /><span>Necrosis / eschar</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="q">
+                    <label class="label" for="f-r-w-1-pain">Pain score <output class="range-value" for="f-r-w-1-pain" data-range-output>0</output><span class="range-max">/ 10</span></label>
+                    <input class="range" id="f-r-w-1-pain" name="r.w.1.pain" type="range" min="0" max="10" step="1" value="0" />
+                  </div>
+                  <fieldset class="q" data-required="any" data-error="Choose the signs, or “None”.">
+                    <legend class="label">Local infection signs</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="checkbox" name="r.w.1.signs" value="swelling" /><span>Swelling / induration</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.1.signs" value="erythema" /><span>Erythema</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.1.signs" value="tenderness" /><span>Tenderness</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.1.signs" value="warmth" /><span>Warmth</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.1.signs" value="purulent" /><span>Purulent discharge</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.1.signs" value="none" data-exclusive /><span>None</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="q">
+                    <label class="label" for="f-r-w-1-erythema">Erythema extent from wound edge</label>
+                    <div class="input-unit">
+                      <input class="input" id="f-r-w-1-erythema" name="r.w.1.erythema" type="number" inputmode="decimal" step="0.5" min="0" max="50" />
+                      <span class="input-unit__suffix">cm</span>
+                    </div>
+                  </div>
+                  <fieldset class="q" data-required="radio" data-error="Record the probe-to-bone result.">
+                    <legend class="label">Probe-to-bone</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="r.w.1.ptb" value="yes" /><span>Positive</span></label>
+                      <label class="chip"><input type="radio" name="r.w.1.ptb" value="no" /><span>Negative</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <fieldset class="q" data-required="any" data-error="Choose exposed structures, or “None”.">
+                    <legend class="label">Exposed structure</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="checkbox" name="r.w.1.exposed" value="tendon" /><span>Tendon</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.1.exposed" value="joint" /><span>Joint</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.1.exposed" value="bone" /><span>Bone</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.1.exposed" value="none" data-exclusive /><span>None</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <!-- assumed: gangrene is not in the spec but Wagner and WIfI need it -->
+                  <fieldset class="q" data-required="radio" data-error="Record gangrene.">
+                    <legend class="label">Gangrene</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="r.w.1.gangrene" value="none" /><span>None</span></label>
+                      <label class="chip"><input type="radio" name="r.w.1.gangrene" value="localized" /><span>Localized (toe / forefoot)</span></label>
+                      <label class="chip"><input type="radio" name="r.w.1.gangrene" value="extensive" /><span>Extensive</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <fieldset class="q" data-required="radio" data-error="Record osteomyelitis status.">
+                    <legend class="label">Osteomyelitis</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="r.w.1.osteomyelitis" value="no" /><span>Not suspected</span></label>
+                      <label class="chip"><input type="radio" name="r.w.1.osteomyelitis" value="suspected" /><span>Suspected</span></label>
+                      <label class="chip"><input type="radio" name="r.w.1.osteomyelitis" value="confirmed" /><span>Confirmed</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="rec-grid" data-recs="wound-1"></div>
+                </fieldset>
+                <fieldset class="ulcer-card wound-card" data-wound="2" hidden>
+                  <legend class="foot-card__title">Ulcer 2 · <span data-wound-location></span></legend>
+                  <fieldset class="q" data-required="radio" data-error="Choose the onset.">
+                    <legend class="label">Onset / duration</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="r.w.2.onset" value="lt1w" /><span>&lt; 1 week</span></label>
+                      <label class="chip"><input type="radio" name="r.w.2.onset" value="1-4w" /><span>1–4 weeks</span></label>
+                      <label class="chip"><input type="radio" name="r.w.2.onset" value="1-3m" /><span>1–3 months</span></label>
+                      <label class="chip"><input type="radio" name="r.w.2.onset" value="gt3m" /><span>&gt; 3 months</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <fieldset class="q" data-required="radio" data-error="Choose the ulcer type.">
+                    <legend class="label">Type / cause</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="r.w.2.type" value="neuropathic" /><span>Neuropathic</span></label>
+                      <label class="chip"><input type="radio" name="r.w.2.type" value="ischaemic" /><span>Ischaemic</span></label>
+                      <label class="chip"><input type="radio" name="r.w.2.type" value="neuroischaemic" /><span>Neuro-ischaemic</span></label>
+                      <label class="chip"><input type="radio" name="r.w.2.type" value="pressure" /><span>Pressure</span></label>
+                      <label class="chip"><input type="radio" name="r.w.2.type" value="trauma" /><span>Trauma</span></label>
+                      <label class="chip"><input type="radio" name="r.w.2.type" value="surgical" /><span>Surgical</span></label>
+                      <label class="chip"><input type="radio" name="r.w.2.type" value="other" /><span>Other</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="q-row">
+                    <div class="q" data-required="value" data-error="Enter the length (0.1–40 cm).">
+                      <label class="label" for="f-r-w-2-length">Length</label>
+                      <div class="input-unit">
+                        <input class="input" id="f-r-w-2-length" name="r.w.2.length" type="number" inputmode="decimal" step="0.1" min="0.1" max="40" />
+                        <span class="input-unit__suffix">cm</span>
+                      </div>
+                      <p class="field-error" hidden>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                        <span></span>
+                      </p>
+                    </div>
+                    <div class="q" data-required="value" data-error="Enter the width (0.1–40 cm).">
+                      <label class="label" for="f-r-w-2-width">Width</label>
+                      <div class="input-unit">
+                        <input class="input" id="f-r-w-2-width" name="r.w.2.width" type="number" inputmode="decimal" step="0.1" min="0.1" max="40" />
+                        <span class="input-unit__suffix">cm</span>
+                      </div>
+                      <p class="field-error" hidden>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                        <span></span>
+                      </p>
+                    </div>
+                    <div class="q" data-required="value" data-error="Enter the depth (0–10 cm).">
+                      <label class="label" for="f-r-w-2-depth">Depth</label>
+                      <div class="input-unit">
+                        <input class="input" id="f-r-w-2-depth" name="r.w.2.depth" type="number" inputmode="decimal" step="0.1" min="0" max="10" />
+                        <span class="input-unit__suffix">cm</span>
+                      </div>
+                      <p class="field-error" hidden>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                        <span></span>
+                      </p>
+                    </div>
+                  </div>
+                  <fieldset class="q" data-required="any" data-error="Choose the tissue types present.">
+                    <legend class="label">Tissue bed</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="checkbox" name="r.w.2.tissue" value="granulation" /><span>Granulation</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.2.tissue" value="slough" /><span>Slough</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.2.tissue" value="necrosis" /><span>Necrosis / eschar</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="q">
+                    <label class="label" for="f-r-w-2-pain">Pain score <output class="range-value" for="f-r-w-2-pain" data-range-output>0</output><span class="range-max">/ 10</span></label>
+                    <input class="range" id="f-r-w-2-pain" name="r.w.2.pain" type="range" min="0" max="10" step="1" value="0" />
+                  </div>
+                  <fieldset class="q" data-required="any" data-error="Choose the signs, or “None”.">
+                    <legend class="label">Local infection signs</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="checkbox" name="r.w.2.signs" value="swelling" /><span>Swelling / induration</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.2.signs" value="erythema" /><span>Erythema</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.2.signs" value="tenderness" /><span>Tenderness</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.2.signs" value="warmth" /><span>Warmth</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.2.signs" value="purulent" /><span>Purulent discharge</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.2.signs" value="none" data-exclusive /><span>None</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="q">
+                    <label class="label" for="f-r-w-2-erythema">Erythema extent from wound edge</label>
+                    <div class="input-unit">
+                      <input class="input" id="f-r-w-2-erythema" name="r.w.2.erythema" type="number" inputmode="decimal" step="0.5" min="0" max="50" />
+                      <span class="input-unit__suffix">cm</span>
+                    </div>
+                  </div>
+                  <fieldset class="q" data-required="radio" data-error="Record the probe-to-bone result.">
+                    <legend class="label">Probe-to-bone</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="r.w.2.ptb" value="yes" /><span>Positive</span></label>
+                      <label class="chip"><input type="radio" name="r.w.2.ptb" value="no" /><span>Negative</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <fieldset class="q" data-required="any" data-error="Choose exposed structures, or “None”.">
+                    <legend class="label">Exposed structure</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="checkbox" name="r.w.2.exposed" value="tendon" /><span>Tendon</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.2.exposed" value="joint" /><span>Joint</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.2.exposed" value="bone" /><span>Bone</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.2.exposed" value="none" data-exclusive /><span>None</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <!-- assumed: gangrene is not in the spec but Wagner and WIfI need it -->
+                  <fieldset class="q" data-required="radio" data-error="Record gangrene.">
+                    <legend class="label">Gangrene</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="r.w.2.gangrene" value="none" /><span>None</span></label>
+                      <label class="chip"><input type="radio" name="r.w.2.gangrene" value="localized" /><span>Localized (toe / forefoot)</span></label>
+                      <label class="chip"><input type="radio" name="r.w.2.gangrene" value="extensive" /><span>Extensive</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <fieldset class="q" data-required="radio" data-error="Record osteomyelitis status.">
+                    <legend class="label">Osteomyelitis</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="r.w.2.osteomyelitis" value="no" /><span>Not suspected</span></label>
+                      <label class="chip"><input type="radio" name="r.w.2.osteomyelitis" value="suspected" /><span>Suspected</span></label>
+                      <label class="chip"><input type="radio" name="r.w.2.osteomyelitis" value="confirmed" /><span>Confirmed</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="rec-grid" data-recs="wound-2"></div>
+                </fieldset>
+                <fieldset class="ulcer-card wound-card" data-wound="3" hidden>
+                  <legend class="foot-card__title">Ulcer 3 · <span data-wound-location></span></legend>
+                  <fieldset class="q" data-required="radio" data-error="Choose the onset.">
+                    <legend class="label">Onset / duration</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="r.w.3.onset" value="lt1w" /><span>&lt; 1 week</span></label>
+                      <label class="chip"><input type="radio" name="r.w.3.onset" value="1-4w" /><span>1–4 weeks</span></label>
+                      <label class="chip"><input type="radio" name="r.w.3.onset" value="1-3m" /><span>1–3 months</span></label>
+                      <label class="chip"><input type="radio" name="r.w.3.onset" value="gt3m" /><span>&gt; 3 months</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <fieldset class="q" data-required="radio" data-error="Choose the ulcer type.">
+                    <legend class="label">Type / cause</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="r.w.3.type" value="neuropathic" /><span>Neuropathic</span></label>
+                      <label class="chip"><input type="radio" name="r.w.3.type" value="ischaemic" /><span>Ischaemic</span></label>
+                      <label class="chip"><input type="radio" name="r.w.3.type" value="neuroischaemic" /><span>Neuro-ischaemic</span></label>
+                      <label class="chip"><input type="radio" name="r.w.3.type" value="pressure" /><span>Pressure</span></label>
+                      <label class="chip"><input type="radio" name="r.w.3.type" value="trauma" /><span>Trauma</span></label>
+                      <label class="chip"><input type="radio" name="r.w.3.type" value="surgical" /><span>Surgical</span></label>
+                      <label class="chip"><input type="radio" name="r.w.3.type" value="other" /><span>Other</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="q-row">
+                    <div class="q" data-required="value" data-error="Enter the length (0.1–40 cm).">
+                      <label class="label" for="f-r-w-3-length">Length</label>
+                      <div class="input-unit">
+                        <input class="input" id="f-r-w-3-length" name="r.w.3.length" type="number" inputmode="decimal" step="0.1" min="0.1" max="40" />
+                        <span class="input-unit__suffix">cm</span>
+                      </div>
+                      <p class="field-error" hidden>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                        <span></span>
+                      </p>
+                    </div>
+                    <div class="q" data-required="value" data-error="Enter the width (0.1–40 cm).">
+                      <label class="label" for="f-r-w-3-width">Width</label>
+                      <div class="input-unit">
+                        <input class="input" id="f-r-w-3-width" name="r.w.3.width" type="number" inputmode="decimal" step="0.1" min="0.1" max="40" />
+                        <span class="input-unit__suffix">cm</span>
+                      </div>
+                      <p class="field-error" hidden>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                        <span></span>
+                      </p>
+                    </div>
+                    <div class="q" data-required="value" data-error="Enter the depth (0–10 cm).">
+                      <label class="label" for="f-r-w-3-depth">Depth</label>
+                      <div class="input-unit">
+                        <input class="input" id="f-r-w-3-depth" name="r.w.3.depth" type="number" inputmode="decimal" step="0.1" min="0" max="10" />
+                        <span class="input-unit__suffix">cm</span>
+                      </div>
+                      <p class="field-error" hidden>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                        <span></span>
+                      </p>
+                    </div>
+                  </div>
+                  <fieldset class="q" data-required="any" data-error="Choose the tissue types present.">
+                    <legend class="label">Tissue bed</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="checkbox" name="r.w.3.tissue" value="granulation" /><span>Granulation</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.3.tissue" value="slough" /><span>Slough</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.3.tissue" value="necrosis" /><span>Necrosis / eschar</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="q">
+                    <label class="label" for="f-r-w-3-pain">Pain score <output class="range-value" for="f-r-w-3-pain" data-range-output>0</output><span class="range-max">/ 10</span></label>
+                    <input class="range" id="f-r-w-3-pain" name="r.w.3.pain" type="range" min="0" max="10" step="1" value="0" />
+                  </div>
+                  <fieldset class="q" data-required="any" data-error="Choose the signs, or “None”.">
+                    <legend class="label">Local infection signs</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="checkbox" name="r.w.3.signs" value="swelling" /><span>Swelling / induration</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.3.signs" value="erythema" /><span>Erythema</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.3.signs" value="tenderness" /><span>Tenderness</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.3.signs" value="warmth" /><span>Warmth</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.3.signs" value="purulent" /><span>Purulent discharge</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.3.signs" value="none" data-exclusive /><span>None</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="q">
+                    <label class="label" for="f-r-w-3-erythema">Erythema extent from wound edge</label>
+                    <div class="input-unit">
+                      <input class="input" id="f-r-w-3-erythema" name="r.w.3.erythema" type="number" inputmode="decimal" step="0.5" min="0" max="50" />
+                      <span class="input-unit__suffix">cm</span>
+                    </div>
+                  </div>
+                  <fieldset class="q" data-required="radio" data-error="Record the probe-to-bone result.">
+                    <legend class="label">Probe-to-bone</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="r.w.3.ptb" value="yes" /><span>Positive</span></label>
+                      <label class="chip"><input type="radio" name="r.w.3.ptb" value="no" /><span>Negative</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <fieldset class="q" data-required="any" data-error="Choose exposed structures, or “None”.">
+                    <legend class="label">Exposed structure</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="checkbox" name="r.w.3.exposed" value="tendon" /><span>Tendon</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.3.exposed" value="joint" /><span>Joint</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.3.exposed" value="bone" /><span>Bone</span></label>
+                      <label class="chip"><input type="checkbox" name="r.w.3.exposed" value="none" data-exclusive /><span>None</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <!-- assumed: gangrene is not in the spec but Wagner and WIfI need it -->
+                  <fieldset class="q" data-required="radio" data-error="Record gangrene.">
+                    <legend class="label">Gangrene</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="r.w.3.gangrene" value="none" /><span>None</span></label>
+                      <label class="chip"><input type="radio" name="r.w.3.gangrene" value="localized" /><span>Localized (toe / forefoot)</span></label>
+                      <label class="chip"><input type="radio" name="r.w.3.gangrene" value="extensive" /><span>Extensive</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <fieldset class="q" data-required="radio" data-error="Record osteomyelitis status.">
+                    <legend class="label">Osteomyelitis</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="r.w.3.osteomyelitis" value="no" /><span>Not suspected</span></label>
+                      <label class="chip"><input type="radio" name="r.w.3.osteomyelitis" value="suspected" /><span>Suspected</span></label>
+                      <label class="chip"><input type="radio" name="r.w.3.osteomyelitis" value="confirmed" /><span>Confirmed</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="rec-grid" data-recs="wound-3"></div>
+                </fieldset>
+              </div>
+            </section>
+          </div>
+        </details>
+
+        <details class="form-section" data-section="4">
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">4</span>
+            <span class="form-section__title"><span class="sr-only">Section 4: </span>Lab Results</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 17 2 2 4-4" /><path d="m3 7 2 2 4-4" /><path d="M13 6h8" /><path d="M13 12h8" /><path d="M13 18h8" /></svg>Suggested tests</h3>
+              <p class="field-hint" data-suggested-empty>Suggestions appear when the nurse recorded an ulcer.</p>
+              <div class="suggest-list" data-suggested></div>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2" /><path d="M8.5 2h7" /><path d="M7 16h10" /></svg>Haematology &amp; chemistry</h3>
+              <p class="field-hint">Reference ranges from the Diabetic Foot 102 teaching deck. WBC feeds the SIRS count.</p>
+              <div class="lab-grid">
+                <div class="q lab-field" data-lab="wbc">
+                  <label class="label" for="f-r-lab-wbc">WBC <span class="badge lab-flag" data-lab-flag hidden></span></label>
+                  <div class="input-unit">
+                    <input class="input" id="f-r-lab-wbc" name="r.lab.wbc" type="number" inputmode="decimal" step="any" min="0" />
+                    <span class="input-unit__suffix">×10⁹/L</span>
+                  </div>
+                  <p class="field-hint">Reference 4.5–11</p>
+                </div>
+                <div class="q lab-field" data-lab="platelets">
+                  <label class="label" for="f-r-lab-platelets">Platelets <span class="badge lab-flag" data-lab-flag hidden></span></label>
+                  <div class="input-unit">
+                    <input class="input" id="f-r-lab-platelets" name="r.lab.platelets" type="number" inputmode="decimal" step="any" min="0" />
+                    <span class="input-unit__suffix">×10⁹/L</span>
+                  </div>
+                  <p class="field-hint">Reference 150–400</p>
+                </div>
+                <div class="q lab-field" data-lab="fbg">
+                  <label class="label" for="f-r-lab-fbg">Fasting glucose <span class="badge lab-flag" data-lab-flag hidden></span></label>
+                  <div class="input-unit">
+                    <input class="input" id="f-r-lab-fbg" name="r.lab.fbg" type="number" inputmode="decimal" step="any" min="0" />
+                    <span class="input-unit__suffix">mg/dL</span>
+                  </div>
+                  <p class="field-hint">Reference 70–100</p>
+                </div>
+                <div class="q lab-field" data-lab="hba1c">
+                  <label class="label" for="f-r-lab-hba1c">HbA1c <span class="badge lab-flag" data-lab-flag hidden></span></label>
+                  <div class="input-unit">
+                    <input class="input" id="f-r-lab-hba1c" name="r.lab.hba1c" type="number" inputmode="decimal" step="any" min="0" />
+                    <span class="input-unit__suffix">%</span>
+                  </div>
+                  <p class="field-hint">Reference target &lt; 7</p>
+                </div>
+                <div class="q lab-field" data-lab="creatinine">
+                  <label class="label" for="f-r-lab-creatinine">Creatinine <span class="badge lab-flag" data-lab-flag hidden></span></label>
+                  <div class="input-unit">
+                    <input class="input" id="f-r-lab-creatinine" name="r.lab.creatinine" type="number" inputmode="decimal" step="any" min="0" />
+                    <span class="input-unit__suffix">µmol/L</span>
+                  </div>
+                  <p class="field-hint">No reference range in source</p>
+                </div>
+                <div class="q lab-field" data-lab="crp">
+                  <label class="label" for="f-r-lab-crp">CRP <span class="badge lab-flag" data-lab-flag hidden></span></label>
+                  <div class="input-unit">
+                    <input class="input" id="f-r-lab-crp" name="r.lab.crp" type="number" inputmode="decimal" step="any" min="0" />
+                    <span class="input-unit__suffix">mg/L</span>
+                  </div>
+                  <p class="field-hint">Reference &lt; 10</p>
+                </div>
+                <div class="q lab-field" data-lab="esr">
+                  <label class="label" for="f-r-lab-esr">ESR <span class="badge lab-flag" data-lab-flag hidden></span></label>
+                  <div class="input-unit">
+                    <input class="input" id="f-r-lab-esr" name="r.lab.esr" type="number" inputmode="decimal" step="any" min="0" />
+                    <span class="input-unit__suffix">mm/hr</span>
+                  </div>
+                  <p class="field-hint">Reference &lt; 20</p>
+                </div>
+                <div class="q lab-field" data-lab="procalcitonin">
+                  <label class="label" for="f-r-lab-procalcitonin">Procalcitonin <span class="badge lab-flag" data-lab-flag hidden></span></label>
+                  <div class="input-unit">
+                    <input class="input" id="f-r-lab-procalcitonin" name="r.lab.procalcitonin" type="number" inputmode="decimal" step="any" min="0" />
+                    <span class="input-unit__suffix">ng/mL</span>
+                  </div>
+                  <p class="field-hint">Reference &lt; 0.1</p>
+                </div>
+                <div class="q lab-field" data-lab="lactate">
+                  <label class="label" for="f-r-lab-lactate">Lactate <span class="badge lab-flag" data-lab-flag hidden></span></label>
+                  <div class="input-unit">
+                    <input class="input" id="f-r-lab-lactate" name="r.lab.lactate" type="number" inputmode="decimal" step="any" min="0" />
+                    <span class="input-unit__suffix">mmol/L</span>
+                  </div>
+                  <p class="field-hint">Reference &lt; 2</p>
+                </div>
+                <div class="q lab-field" data-lab="albumin">
+                  <label class="label" for="f-r-lab-albumin">Albumin <span class="badge lab-flag" data-lab-flag hidden></span></label>
+                  <div class="input-unit">
+                    <input class="input" id="f-r-lab-albumin" name="r.lab.albumin" type="number" inputmode="decimal" step="any" min="0" />
+                    <span class="input-unit__suffix">g/L</span>
+                  </div>
+                  <p class="field-hint">Reference 35–50</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2" /><path d="M8.5 2h7" /><path d="M7 16h10" /></svg>Microbiology</h3>
+              <div class="q">
+                <label class="label" for="f-r-lab-culture">Wound culture result <span class="label__optional">(optional)</span></label>
+                <input class="input" id="f-r-lab-culture" name="r.lab.culture" autocomplete="off" />
+              </div>
+              <div class="q">
+                <label class="label" for="f-r-lab-deepCulture">Bone / blood culture result <span class="label__optional">(optional)</span></label>
+                <input class="input" id="f-r-lab-deepCulture" name="r.lab.deepCulture" autocomplete="off" />
+              </div>
+            </section>
+          </div>
+        </details>
+
+        <details class="form-section" data-section="5">
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">5</span>
+            <span class="form-section__title"><span class="sr-only">Section 5: </span>Peripheral Arterial Disease</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27" /></svg>Bedside findings</h3>
+              <div class="pad-summary" data-pad-summary></div>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 2v2" /><path d="M5 2v2" /><path d="M5 3H4a2 2 0 0 0-2 2v4a6 6 0 0 0 12 0V5a2 2 0 0 0-2-2h-1" /><path d="M8 15a6 6 0 0 0 12 0v-3" /><circle cx="20" cy="10" r="2" /></svg>Assessment</h3>
+              <fieldset class="q" data-required="radio" data-error="Record the PAD conclusion.">
+                <legend class="label">PAD conclusion</legend>
+                <div class="chips">
+                  <label class="chip"><input type="radio" name="r.pad.conclusion" value="no-pad" /><span>No PAD</span></label>
+                  <label class="chip"><input type="radio" name="r.pad.conclusion" value="pad" /><span>PAD</span></label>
+                  <label class="chip"><input type="radio" name="r.pad.conclusion" value="clti" /><span>Chronic limb-threatening ischaemia</span></label>
+                </div>
+                <p class="field-error" hidden>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                  <span></span>
+                </p>
+              </fieldset>
+              <div class="callout callout-danger" data-alert="severe-ischaemia" hidden>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg>
+                <div><strong>Severe ischaemia</strong><p data-severe-text></p></div>
+              </div>
+              <div class="q">
+                <label class="label" for="f-r-pad-notes">Vascular notes <span class="label__optional">(optional)</span></label>
+                <textarea class="input textarea" id="f-r-pad-notes" name="r.pad.notes" rows="2"></textarea>
+              </div>
+            </section>
+          </div>
+        </details>
+
+        <details class="form-section" data-section="6">
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">6</span>
+            <span class="form-section__title"><span class="sr-only">Section 6: </span>Infection Management</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z" /></svg>Infection status</h3>
+              <div class="infection-summary" data-infection-summary></div>
+              <div class="callout callout-warning" data-allergies hidden>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg>
+                <div><strong>Allergies</strong><p data-allergy-text></p></div>
+              </div>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" /><path d="m8.5 8.5 7 7" /></svg>Antibiotics</h3>
+              <p class="field-hint" data-antibiotic-hint></p>
+              <fieldset class="q" data-required="radio" data-error="Choose the antibiotic plan.">
+                <legend class="label">Antibiotic plan</legend>
+                <div class="chips">
+                  <label class="chip"><input type="radio" name="r.inf.antibiotics" value="none" /><span>No antibiotics</span></label>
+                  <label class="chip"><input type="radio" name="r.inf.antibiotics" value="oral" /><span>Oral empiric</span></label>
+                  <label class="chip"><input type="radio" name="r.inf.antibiotics" value="iv" /><span>IV / parenteral</span></label>
+                </div>
+                <p class="field-error" hidden>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                  <span></span>
+                </p>
+              </fieldset>
+              <div class="reveal" data-reveal="antibiotic-detail" hidden>
+                <div class="q" data-required="value" data-error="Enter the agent and dose.">
+                  <label class="label" for="f-r-inf-agent">Agent and dose</label>
+                  <input class="input" id="f-r-inf-agent" name="r.inf.agent" autocomplete="off" />
+                  <p class="field-error" hidden>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                    <span></span>
+                  </p>
+                </div>
+                <div class="q">
+                  <label class="label" for="f-r-inf-days">Planned duration</label>
+                  <div class="input-unit">
+                    <input class="input" id="f-r-inf-days" name="r.inf.days" type="number" inputmode="decimal" step="1" min="1" max="90" />
+                    <span class="input-unit__suffix">days</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l4 2" /></svg>Monitoring</h3>
+              <fieldset class="q">
+                <legend class="label">Culture taken before antibiotics?</legend>
+                <div class="chips">
+                  <label class="chip"><input type="radio" name="r.inf.culture" value="yes" /><span>Yes</span></label>
+                  <label class="chip"><input type="radio" name="r.inf.culture" value="no" /><span>No</span></label>
+                  <label class="chip"><input type="radio" name="r.inf.culture" value="na" /><span>Not applicable</span></label>
+                </div>
+              </fieldset>
+              <fieldset class="q">
+                <legend class="label">Follow-up</legend>
+                <div class="chips">
+                  <label class="chip"><input type="checkbox" name="r.inf.reassess" value="24-48h" /><span>Reassess in 24–48 h</span></label>
+                </div>
+              </fieldset>
+              <fieldset class="q">
+                <legend class="label">Hospital admission needed?</legend>
+                <div class="chips">
+                  <label class="chip"><input type="radio" name="r.inf.admit" value="yes" /><span>Yes</span></label>
+                  <label class="chip"><input type="radio" name="r.inf.admit" value="no" /><span>No</span></label>
+                </div>
+              </fieldset>
+            </section>
+          </div>
+        </details>
+
+        <details class="form-section" data-section="7">
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">7</span>
+            <span class="form-section__title"><span class="sr-only">Section 7: </span>Adjunctive Therapies</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 10.01h.01" /><path d="M10 14.01h.01" /><path d="M14 10.01h.01" /><path d="M14 14.01h.01" /><path d="M18 6v12" /><path d="M6 6v12" /><rect x="2" y="6" width="20" height="12" rx="2" /></svg>Standard wound care</h3>
+              <fieldset class="q">
+                <legend class="label">Debridement</legend>
+                <div class="chips">
+                  <label class="chip"><input type="radio" name="r.std.debridement" value="none" /><span>None</span></label>
+                  <label class="chip"><input type="radio" name="r.std.debridement" value="sharp" /><span>Sharp</span></label>
+                  <label class="chip"><input type="radio" name="r.std.debridement" value="enzymatic" /><span>Enzymatic</span></label>
+                  <label class="chip"><input type="radio" name="r.std.debridement" value="autolytic" /><span>Autolytic</span></label>
+                  <label class="chip"><input type="radio" name="r.std.debridement" value="mechanical" /><span>Mechanical</span></label>
+                </div>
+              </fieldset>
+              <fieldset class="q">
+                <legend class="label">Offloading</legend>
+                <div class="chips">
+                  <label class="chip"><input type="radio" name="r.std.offloading" value="none" /><span>None</span></label>
+                  <label class="chip"><input type="radio" name="r.std.offloading" value="tcc" /><span>Total contact cast</span></label>
+                  <label class="chip"><input type="radio" name="r.std.offloading" value="walker" /><span>Removable walker</span></label>
+                  <label class="chip"><input type="radio" name="r.std.offloading" value="felt" /><span>Felt padding</span></label>
+                  <label class="chip"><input type="radio" name="r.std.offloading" value="custom" /><span>Custom shoes / insoles</span></label>
+                </div>
+              </fieldset>
+              <div class="q">
+                <label class="label" for="f-r-std-dressing">Dressing <span class="label__optional">(optional)</span></label>
+                <input class="input" id="f-r-std-dressing" name="r.std.dressing" autocomplete="off" />
+              </div>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" /></svg>Adjunctive therapies</h3>
+              <p class="field-hint" data-adjunct-hint>Consider only after 4–6 weeks without progress despite optimal standard care (DF102).</p>
+              <fieldset class="q">
+                <legend class="label">Therapies</legend>
+                <div class="chips">
+                  <label class="chip"><input type="checkbox" name="r.adj" value="npwt" /><span>NPWT</span></label>
+                  <label class="chip"><input type="checkbox" name="r.adj" value="hbot" /><span>HBOT</span></label>
+                  <label class="chip"><input type="checkbox" name="r.adj" value="topical-o2" /><span>Topical oxygen</span></label>
+                  <label class="chip"><input type="checkbox" name="r.adj" value="growth-factors" /><span>Growth factors / placental products</span></label>
+                  <label class="chip"><input type="checkbox" name="r.adj" value="prp" /><span>PRP</span></label>
+                  <label class="chip"><input type="checkbox" name="r.adj" value="none" data-exclusive /><span>None</span></label>
+                </div>
+              </fieldset>
+              <div class="callout callout-warning" data-adjunct-warning hidden>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg>
+                <div data-adjunct-warning-text></div>
+              </div>
+            </section>
+          </div>
+        </details>
+
+        <details class="form-section" data-section="8">
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">8</span>
+            <span class="form-section__title"><span class="sr-only">Section 8: </span>Orders</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2" /><path d="M8.5 2h7" /><path d="M7 16h10" /></svg>Laboratory</h3>
+              <fieldset class="q">
+                <legend class="label">Tests</legend>
+                <div class="chips">
+                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="cbc" /><span>CBC</span></label>
+                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="esr" /><span>ESR</span></label>
+                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="crp" /><span>CRP</span></label>
+                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="fbg" /><span>Fasting blood glucose</span></label>
+                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="hba1c" /><span>HbA1c</span></label>
+                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="creatinine" /><span>Serum creatinine</span></label>
+                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="wound-culture" /><span>Wound culture (C&amp;S)</span></label>
+                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="procalcitonin" /><span>Procalcitonin</span></label>
+                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="bone-culture" /><span>Bone culture</span></label>
+                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="blood-culture" /><span>Blood cultures</span></label>
+                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="lactate" /><span>Lactate</span></label>
+                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="albumin" /><span>Albumin</span></label>
+                </div>
+              </fieldset>
+              <div class="q">
+                <label class="label" for="f-r-orders-labsOther">Other tests <span class="label__optional">(optional)</span></label>
+                <input class="input" id="f-r-orders-labsOther" name="r.orders.labsOther" autocomplete="off" />
+              </div>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2" /><path d="M17 3h2a2 2 0 0 1 2 2v2" /><path d="M21 17v2a2 2 0 0 1-2 2h-2" /><path d="M7 21H5a2 2 0 0 1-2-2v-2" /></svg>Imaging</h3>
+              <fieldset class="q">
+                <legend class="label">Imaging</legend>
+                <div class="chips">
+                  <label class="chip"><input type="checkbox" name="r.orders.imaging" value="xray" /><span>Plain radiograph</span></label>
+                  <label class="chip"><input type="checkbox" name="r.orders.imaging" value="mri" /><span>MRI</span></label>
+                  <label class="chip"><input type="checkbox" name="r.orders.imaging" value="duplex" /><span>Arterial duplex</span></label>
+                  <label class="chip"><input type="checkbox" name="r.orders.imaging" value="cta" /><span>CT / MR angiography</span></label>
+                </div>
+              </fieldset>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" /><path d="m21.854 2.147-10.94 10.939" /></svg>Referrals</h3>
+              <fieldset class="q">
+                <legend class="label">Referral orders</legend>
+                <div class="chips">
+                  <label class="chip"><input type="checkbox" name="r.orders.referrals" value="podiatry" /><span>Podiatry / wound care</span></label>
+                  <label class="chip"><input type="checkbox" name="r.orders.referrals" value="vascular" /><span>Vascular</span></label>
+                  <label class="chip"><input type="checkbox" name="r.orders.referrals" value="id-surgical" /><span>Infectious disease / surgical</span></label>
+                  <label class="chip"><input type="checkbox" name="r.orders.referrals" value="orthotic" /><span>Footwear / orthotic</span></label>
+                </div>
+              </fieldset>
+            </section>
+          </div>
+        </details>
+
+        <details class="form-section" data-section="9">
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">9</span>
+            <span class="form-section__title"><span class="sr-only">Section 9: </span>Clinical Interpretation</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 17 2 2 4-4" /><path d="m3 7 2 2 4-4" /><path d="M13 6h8" /><path d="M13 12h8" /><path d="M13 18h8" /></svg>Confirmed conclusions</h3>
+              <dl class="detail-grid detail-grid--plain" data-interp-summary></dl>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z" /></svg>Impression</h3>
+              <div class="q">
+                <label class="label" for="f-r-int-skin">Deformity / skin diagnosis <span class="label__optional">(optional)</span></label>
+                <input class="input" id="f-r-int-skin" name="r.int.skin" autocomplete="off" />
+              </div>
+              <div class="q" data-required="value" data-error="Write your clinical impression.">
+                <label class="label" for="f-r-int-impression">Clinical impression</label>
+                <textarea class="input textarea" id="f-r-int-impression" name="r.int.impression" rows="3"></textarea>
+                <p class="field-error" hidden>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                  <span></span>
+                </p>
+              </div>
+            </section>
+          </div>
+        </details>
+
+        <details class="form-section" data-section="10">
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">10</span>
+            <span class="form-section__title"><span class="sr-only">Section 10: </span>Referral Decision</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 14 4-4" /><path d="M3.34 19a10 10 0 1 1 17.32 0" /></svg>System suggestion</h3>
+              <div class="suggestion" data-ref-suggestion>
+                <div data-ref-suggestion-text></div>
+                <button type="button" class="btn btn-outline" data-apply-referral>Apply suggestion</button>
+              </div>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" /><path d="m21.854 2.147-10.94 10.939" /></svg>Decision</h3>
+              <fieldset class="q" data-required="radio" data-error="Choose whether a referral is needed.">
+                <legend class="label">Referral needed?</legend>
+                <div class="chips">
+                  <label class="chip"><input type="radio" name="r.ref.needed" value="yes" /><span>Yes</span></label>
+                  <label class="chip"><input type="radio" name="r.ref.needed" value="no" /><span>No</span></label>
+                </div>
+                <p class="field-error" hidden>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                  <span></span>
+                </p>
+              </fieldset>
+              <div class="reveal" data-reveal="referral" hidden>
+                <fieldset class="q" data-required="radio" data-error="Choose the destination.">
+                  <legend class="label">Destination</legend>
+                  <div class="chips">
+                    <label class="chip"><input type="radio" name="r.ref.destination" value="secondary" /><span>Secondary Care</span></label>
+                    <label class="chip"><input type="radio" name="r.ref.destination" value="private" /><span>Private Center</span></label>
+                    <label class="chip"><input type="radio" name="r.ref.destination" value="vascular" /><span>Vascular</span></label>
+                    <label class="chip"><input type="radio" name="r.ref.destination" value="wound-care" /><span>Wound Care</span></label>
+                    <label class="chip"><input type="radio" name="r.ref.destination" value="tertiary" /><span>Tertiary</span></label>
+                  </div>
+                  <p class="field-error" hidden>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                    <span></span>
+                  </p>
+                </fieldset>
+                <fieldset class="q" data-required="radio" data-error="Choose the urgency.">
+                  <legend class="label">Urgency</legend>
+                  <div class="chips">
+                    <label class="chip"><input type="radio" name="r.ref.urgency" value="routine" /><span>Routine</span></label>
+                    <label class="chip"><input type="radio" name="r.ref.urgency" value="soon" /><span>Soon</span></label>
+                    <label class="chip"><input type="radio" name="r.ref.urgency" value="urgent" /><span>Urgent</span></label>
+                    <label class="chip"><input type="radio" name="r.ref.urgency" value="emergency" /><span>Emergency</span></label>
+                  </div>
+                  <p class="field-error" hidden>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                    <span></span>
+                  </p>
+                </fieldset>
+                <fieldset class="q" data-required="radio" data-error="Choose the timing.">
+                  <legend class="label">Timing</legend>
+                  <div class="chips">
+                    <label class="chip"><input type="radio" name="r.ref.timing" value="today" /><span>Today</span></label>
+                    <label class="chip"><input type="radio" name="r.ref.timing" value="24h" /><span>≤ 24 h</span></label>
+                    <label class="chip"><input type="radio" name="r.ref.timing" value="week" /><span>≤ 1 week</span></label>
+                    <label class="chip"><input type="radio" name="r.ref.timing" value="scheduled" /><span>Scheduled</span></label>
+                  </div>
+                  <p class="field-error" hidden>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                    <span></span>
+                  </p>
+                </fieldset>
+                <div class="q">
+                  <label class="label" for="f-r-ref-reason">Reason for referral <span class="label__optional">(optional)</span></label>
+                  <input class="input" id="f-r-ref-reason" name="r.ref.reason" autocomplete="off" />
+                </div>
+              </div>
+            </section>
+          </div>
+        </details>
+
+        <details class="form-section" data-section="11">
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">11</span>
+            <span class="form-section__title"><span class="sr-only">Section 11: </span>Plan</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 17 2 2 4-4" /><path d="m3 7 2 2 4-4" /><path d="M13 6h8" /><path d="M13 12h8" /><path d="M13 18h8" /></svg>Education</h3>
+              <fieldset class="q" data-required="any" data-error="Record the advice given.">
+                <legend class="label">Advice given</legend>
+                <div class="chips">
+                  <label class="chip"><input type="checkbox" name="r.plan.education" value="foot-care" /><span>Foot-care education</span></label>
+                  <label class="chip"><input type="checkbox" name="r.plan.education" value="self-check" /><span>Daily self-check</span></label>
+                  <label class="chip"><input type="checkbox" name="r.plan.education" value="footwear" /><span>Footwear advice</span></label>
+                  <label class="chip"><input type="checkbox" name="r.plan.education" value="glycaemic" /><span>Glycaemic control reviewed</span></label>
+                </div>
+                <p class="field-error" hidden>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                  <span></span>
+                </p>
+              </fieldset>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z" /><path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z" /><path d="M16 17h4" /><path d="M4 13h4" /></svg>Footwear &amp; offloading</h3>
+              <div class="q">
+                <label class="label" for="f-r-plan-offloading">Footwear / offloading plan <span class="label__optional">(optional)</span></label>
+                <input class="input" id="f-r-plan-offloading" name="r.plan.offloading" autocomplete="off" />
+              </div>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" /></svg>Follow-up</h3>
+              <p class="field-hint" data-followup-suggestion></p>
+              <fieldset class="q" data-required="radio" data-error="Choose the follow-up interval.">
+                <legend class="label">Follow-up interval</legend>
+                <div class="chips">
+                  <label class="chip"><input type="radio" name="r.plan.followup" value="48h" /><span>48 hours</span></label>
+                  <label class="chip"><input type="radio" name="r.plan.followup" value="1w" /><span>1 week</span></label>
+                  <label class="chip"><input type="radio" name="r.plan.followup" value="2w" /><span>2 weeks</span></label>
+                  <label class="chip"><input type="radio" name="r.plan.followup" value="1m" /><span>1 month</span></label>
+                  <label class="chip"><input type="radio" name="r.plan.followup" value="1-3m" /><span>1–3 months</span></label>
+                  <label class="chip"><input type="radio" name="r.plan.followup" value="3-6m" /><span>3–6 months</span></label>
+                  <label class="chip"><input type="radio" name="r.plan.followup" value="6-12m" /><span>6–12 months</span></label>
+                  <label class="chip"><input type="radio" name="r.plan.followup" value="12m" /><span>12 months</span></label>
+                </div>
+                <p class="field-error" hidden>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                  <span></span>
+                </p>
+              </fieldset>
+              <fieldset class="q" data-required="any" data-error="Confirm the safety-net advice.">
+                <legend class="label">Patient / carer</legend>
+                <div class="chips">
+                  <label class="chip"><input type="checkbox" name="r.plan.safetynet" value="understood" /><span>Understands the plan and safety-net advice given</span></label>
+                </div>
+                <p class="field-error" hidden>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                  <span></span>
+                </p>
+              </fieldset>
+            </section>
+          </div>
+        </details>
+
+        <details class="form-section" data-section="12">
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">12</span>
+            <span class="form-section__title"><span class="sr-only">Section 12: </span>Patient Instructions</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="5" /><path d="M20 21a8 8 0 0 0-16 0" /></svg>Instructions</h3>
+              <div class="note-toolbar">
+                <span class="badge badge-muted" data-instructions-edited hidden>Edited</span>
+                <button type="button" class="btn btn-outline" data-regenerate="instructions"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M8 16H3v5" /></svg>Regenerate</button>
+                <button type="button" class="btn btn-outline" data-print-instructions><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6" /><rect x="6" y="14" width="12" height="8" rx="1" /></svg>Print</button>
+              </div>
+              <div class="q">
+                <label class="label" for="f-r-instructions">Patient instructions</label>
+                <textarea class="input textarea textarea--doc" id="f-r-instructions" name="r.instructions" rows="12"></textarea>
+              </div>
+            </section>
+          </div>
+        </details>
+
+        <details class="form-section" data-section="13">
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">13</span>
+            <span class="form-section__title"><span class="sr-only">Section 13: </span>Clinical Note</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z" /></svg>Draft note</h3>
+              <div class="note-toolbar">
+                <span class="badge badge-muted" data-note-edited hidden>Edited</span>
+                <button type="button" class="btn btn-outline" data-regenerate="note"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M8 16H3v5" /></svg>Regenerate</button>
+              </div>
+              <p class="field-hint">Built from the findings, decisions and plan. Regenerating replaces your edits.</p>
+              <div class="q">
+                <label class="label" for="f-r-note">Clinical note</label>
+                <textarea class="input textarea textarea--doc" id="f-r-note" name="r.note" rows="18"></textarea>
+              </div>
+            </section>
+          </div>
+        </details>
+
+        <details class="form-section" data-section="14">
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">14</span>
+            <span class="form-section__title"><span class="sr-only">Section 14: </span>Sign-off</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z" /></svg>Signature</h3>
+              <dl class="detail-grid detail-grid--plain">
+                <div><dt>Assessor</dt><dd data-assessor></dd></div>
+                <div><dt>Role</dt><dd data-assessor-role></dd></div>
+                <div><dt>Date / time</dt><dd data-sign-time></dd></div>
+              </dl>
+              <fieldset class="q" data-required="any" data-error="Confirm you reviewed the note.">
+                <legend class="label">Clinical note</legend>
+                <div class="chips">
+                  <label class="chip"><input type="checkbox" name="r.sign.reviewed" value="yes" /><span>I have reviewed the clinical note</span></label>
+                </div>
+                <p class="field-error" hidden>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                  <span></span>
+                </p>
+              </fieldset>
+              <div class="q" data-required="value" data-error="Type your full name to sign.">
+                <label class="label" for="f-r-sign-name">Signature</label>
+                <input class="input" id="f-r-sign-name" name="r.sign.name" autocomplete="off" />
+                <p class="field-hint">Type your full name exactly as shown above.</p>
+                <p class="field-error" hidden>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                  <span></span>
+                </p>
+              </div>
+            </section>
+          </div>
+        </details>
+
+        <div class="form-actions">
+          <p class="form-actions__progress" id="review-progress" aria-live="polite"></p>
+          <button type="submit" class="btn btn-primary" id="sign-button">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z" /></svg>
+            Sign and complete
+          </button>
+        </div>
+      </form>
+    </main>
+
+    <!-- Confirm sign-off -->
+    <dialog class="modal" id="confirm-sign" aria-labelledby="confirm-sign-title">
+      <form class="modal__inner" method="dialog">
+        <div>
+          <h2 class="modal__title" id="confirm-sign-title">Sign and complete this review?</h2>
+          <p class="modal__description" id="confirm-sign-text"></p>
+        </div>
+        <div class="modal__actions">
+          <button type="submit" class="btn btn-outline" value="cancel">Keep editing</button>
+          <button type="submit" class="btn btn-primary" value="sign">Sign</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./scripts/user-menu.js"></script>
+    <script src="./scripts/patients.js"></script>
+    <script src="./scripts/screening-schema.js"></script>
+    <script src="./scripts/screening-store.js"></script>
+    <script src="./scripts/clinical-rules.js"></script>
+    <script src="./scripts/review.js"></script>
+  </body>
+</html>

@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Diabetic Foot</title>
+    <link rel="stylesheet" href="./styles/shared.css" />
+    <script src="./scripts/auth.js"></script>
+    <script>
+      // Not signed in: back to the sign-in page
+      if (!Auth.getSessionId()) window.location.replace(Auth.LOGIN_PAGE);
+    </script>
+  </head>
+  <body>
+    <header class="app-header">
+      <a class="app-title" href="./home.html">The Clinical Platform</a>
+
+      <nav class="app-nav" aria-label="Main">
+        <a href="./home.html">Home</a>
+        <a href="./dashboard.html">Dashboard</a>
+        <a href="./settings.html">Settings</a>
+      </nav>
+
+      <div class="user-menu">
+        <button
+          type="button"
+          class="avatar-button"
+          id="user-menu-button"
+          aria-haspopup="menu"
+          aria-expanded="false"
+          aria-controls="user-menu"
+          aria-label="Open user menu"
+        >
+          <span id="user-initials">?</span>
+        </button>
+
+        <div class="menu" id="user-menu" role="menu" aria-labelledby="user-menu-button" hidden>
+          <button type="button" class="menu-item" role="menuitem" data-action="account">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+            Account
+          </button>
+          <button type="button" class="menu-item" role="menuitem" data-action="settings">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
+            Settings
+          </button>
+          <hr class="menu-separator" role="separator" />
+          <button type="button" class="menu-item menu-item--destructive" role="menuitem" data-action="logout">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></svg>
+            Log out
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-content">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="./home.html">Home</a>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">Diabetic Foot</span>
+      </nav>
+
+      <div class="page-header">
+        <h1 class="page-title">Diabetic Foot</h1>
+        <p class="page-subtitle">
+          Structured foot screening by trained staff, prepared for practitioner review. One
+          connected record supporting prevention, continuity and limb preservation.
+        </p>
+      </div>
+
+      <!-- Step 1: no patient yet -->
+      <section class="empty-state" id="no-patient" aria-labelledby="no-patient-title">
+        <div class="empty-state__icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="7" r="4" /><path d="M10.3 15H7a4 4 0 0 0-4 4v2" /><circle cx="17" cy="17" r="3" /><path d="m21 21-1.9-1.9" /></svg>
+        </div>
+        <h2 class="empty-state__title" id="no-patient-title">No patient selected</h2>
+        <p class="empty-state__text">Search by file number, national ID or phone number to start.</p>
+        <button type="button" class="btn btn-primary" data-open-patient-search>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+          Select patient
+        </button>
+      </section>
+
+      <!-- Selected patient -->
+      <section class="patient-summary" id="patient-summary" aria-labelledby="patient-name" hidden>
+        <div class="patient-summary__header">
+          <span class="patient-avatar" data-field="initials" aria-hidden="true"></span>
+          <div class="patient-summary__identity">
+            <h2 class="patient-summary__name" id="patient-name" data-field="name" tabindex="-1"></h2>
+            <dl class="patient-meta">
+              <div>
+                <dt>File no.</dt>
+                <dd data-field="fileNumber"></dd>
+              </div>
+              <div>
+                <dt>National ID</dt>
+                <dd data-field="nationalId"></dd>
+              </div>
+              <div>
+                <dt>Age</dt>
+                <dd data-field="age"></dd>
+              </div>
+              <div>
+                <dt>Sex</dt>
+                <dd data-field="sex"></dd>
+              </div>
+              <div>
+                <dt>Phone</dt>
+                <dd data-field="phone"></dd>
+              </div>
+            </dl>
+          </div>
+          <div class="patient-summary__actions">
+            <button type="button" class="btn btn-outline" data-open-patient-search>Change patient</button>
+            <a class="btn btn-primary" href="./screening.html">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="m9 14 2 2 4-4" /></svg>
+              Start Screening
+            </a>
+          </div>
+        </div>
+
+        <div class="patient-summary__badges">
+          <span class="badge" data-field="riskBadge"></span>
+          <span class="badge badge-danger" data-field="problemBadge" hidden></span>
+          <span class="badge badge-secondary" data-field="careLevel"></span>
+        </div>
+
+        <div class="callout callout-danger" data-field="problemCallout" hidden>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg>
+          <div data-field="problemDetail"></div>
+        </div>
+
+        <dl class="detail-grid">
+          <div>
+            <dt>Diabetes</dt>
+            <dd data-field="diabetes"></dd>
+          </div>
+          <div>
+            <dt>Last HbA1c</dt>
+            <dd data-field="hba1c"></dd>
+          </div>
+          <div>
+            <dt>Allergies</dt>
+            <dd data-field="allergies"></dd>
+          </div>
+          <div>
+            <dt>Screening interval</dt>
+            <dd data-field="interval"></dd>
+          </div>
+          <div>
+            <dt>Previous ulcer</dt>
+            <dd data-field="previousUlcer"></dd>
+          </div>
+          <div>
+            <dt>Previous amputation</dt>
+            <dd data-field="previousAmputation"></dd>
+          </div>
+          <div>
+            <dt>Last visit</dt>
+            <dd data-field="lastVisit"></dd>
+          </div>
+          <div>
+            <dt>Next review</dt>
+            <dd data-field="nextReview"></dd>
+          </div>
+          <div class="detail-grid__wide">
+            <dt>Risk history</dt>
+            <dd data-field="riskHistory"></dd>
+          </div>
+          <div class="detail-grid__wide">
+            <dt>Latest note</dt>
+            <dd data-field="note"></dd>
+          </div>
+        </dl>
+      </section>
+
+      <!-- Practitioner worklist -->
+      <section class="page-section" aria-labelledby="worklist-title">
+        <h2 class="section-title" id="worklist-title">Awaiting practitioner review</h2>
+        <p class="field-hint" id="worklist-empty" hidden>No screenings waiting for review.</p>
+        <ul class="worklist" id="worklist"></ul>
+      </section>
+    </main>
+
+    <!-- Patient search -->
+    <dialog class="modal" id="patient-search" aria-labelledby="patient-search-title">
+      <div class="modal__inner">
+        <div class="modal__header">
+          <div>
+            <h2 class="modal__title" id="patient-search-title">Select patient</h2>
+            <p class="modal__description">Demo data — fictional patients.</p>
+          </div>
+          <form method="dialog">
+            <button type="submit" class="btn btn-icon" aria-label="Close">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+            </button>
+          </form>
+        </div>
+
+        <form class="form" id="patient-search-form" novalidate>
+          <fieldset class="segmented">
+            <legend class="sr-only">Search by</legend>
+            <input type="radio" name="searchBy" id="search-by-file" value="fileNumber" checked />
+            <label for="search-by-file">File number</label>
+            <input type="radio" name="searchBy" id="search-by-id" value="nationalId" />
+            <label for="search-by-id">National ID</label>
+            <input type="radio" name="searchBy" id="search-by-phone" value="phone" />
+            <label for="search-by-phone">Phone</label>
+          </fieldset>
+
+          <div class="field">
+            <label class="label" for="patient-query" id="patient-query-label">File number</label>
+            <div class="search-row">
+              <input
+                class="input"
+                id="patient-query"
+                name="query"
+                autocomplete="off"
+                placeholder="N-DFIP-004271"
+                aria-describedby="patient-query-hint"
+                autofocus
+              />
+              <button type="submit" class="btn btn-primary">Search</button>
+            </div>
+            <p class="field-error" id="patient-query-error" hidden>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+              <span></span>
+            </p>
+            <p class="field-hint" id="patient-query-hint">Full or last digits, e.g. N-DFIP-004271 or 4271.</p>
+          </div>
+        </form>
+
+        <p class="result-count" id="patient-result-count" aria-live="polite"></p>
+        <ul class="result-list" id="patient-results"></ul>
+      </div>
+    </dialog>
+
+    <script src="./scripts/user-menu.js"></script>
+    <script src="./scripts/patients.js"></script>
+    <script src="./scripts/patient-select.js"></script>
+    <script src="./scripts/screening-store.js"></script>
+    <script src="./scripts/worklist.js"></script>
+  </body>
+</html>

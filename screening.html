@@ -1,0 +1,1569 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Foot Screening</title>
+    <link rel="stylesheet" href="./styles/shared.css" />
+    <script src="./scripts/auth.js"></script>
+    <script>
+      // Not signed in: back to the sign-in page
+      if (!Auth.getSessionId()) window.location.replace(Auth.LOGIN_PAGE);
+      // No patient chosen yet: pick one on the clinic page first
+      else {
+        let patient = null;
+        try {
+          patient = sessionStorage.getItem("ndfip.df.patient");
+        } catch {}
+        if (!patient) window.location.replace("./diabetic-foot.html");
+      }
+    </script>
+  </head>
+  <body>
+    <header class="app-header">
+      <a class="app-title" href="./home.html">The Clinical Platform</a>
+
+      <nav class="app-nav" aria-label="Main">
+        <a href="./home.html">Home</a>
+        <a href="./dashboard.html">Dashboard</a>
+        <a href="./settings.html">Settings</a>
+      </nav>
+
+      <div class="user-menu">
+        <button
+          type="button"
+          class="avatar-button"
+          id="user-menu-button"
+          aria-haspopup="menu"
+          aria-expanded="false"
+          aria-controls="user-menu"
+          aria-label="Open user menu"
+        >
+          <span id="user-initials">?</span>
+        </button>
+
+        <div class="menu" id="user-menu" role="menu" aria-labelledby="user-menu-button" hidden>
+          <button type="button" class="menu-item" role="menuitem" data-action="account">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+            Account
+          </button>
+          <button type="button" class="menu-item" role="menuitem" data-action="settings">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
+            Settings
+          </button>
+          <hr class="menu-separator" role="separator" />
+          <button type="button" class="menu-item menu-item--destructive" role="menuitem" data-action="logout">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></svg>
+            Log out
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-content page-content--with-actions">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="./home.html">Home</a>
+        <span aria-hidden="true">/</span>
+        <a href="./diabetic-foot.html">Diabetic Foot</a>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">Screening</span>
+      </nav>
+
+      <div class="page-header page-header--split">
+        <div>
+          <h1 class="page-title">Foot Screening</h1>
+        </div>
+        <button type="button" class="btn btn-outline" id="toggle-sections">Expand all</button>
+      </div>
+
+      <form class="screening-form" id="screening-form" novalidate>
+        <details class="form-section" data-section="A" open>
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">A</span>
+            <span class="form-section__title"><span class="sr-only">Section A: </span>Patient &amp; Encounter</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="5" /><path d="M20 21a8 8 0 0 0-16 0" /></svg>Patient details</h3>
+              <dl class="detail-grid detail-grid--plain" data-prefill="patient">
+                <div><dt>Patient</dt><dd data-p="name"></dd></div>
+                <div><dt>File no.</dt><dd data-p="fileNumber"></dd></div>
+                <div><dt>Date of birth</dt><dd data-p="dob"></dd></div>
+                <div><dt>Sex</dt><dd data-p="sex"></dd></div>
+                <div><dt>Diabetes</dt><dd data-p="diabetes"></dd></div>
+                <div><dt>Last HbA1c</dt><dd data-p="hba1c"></dd></div>
+              </dl>
+              <p class="field-hint">Pulled from the patient record.</p>
+              <fieldset class="q" data-required="radio" data-error="Confirm the patient details.">
+                <legend class="label">Patient details confirmed?</legend>
+                <div class="chips">
+                  <label class="chip"><input type="radio" name="a.confirmed" value="yes" /><span>Yes, details are correct</span></label>
+                  <label class="chip"><input type="radio" name="a.confirmed" value="needs-update" /><span>Needs update</span></label>
+                </div>
+                <p class="field-error" hidden>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                  <span></span>
+                </p>
+              </fieldset>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" /></svg>Vital signs</h3>
+              <div class="q-row">
+                <div class="q" data-required="value" data-error="Enter a temperature between 30 and 45 °C.">
+                  <label class="label" for="f-a-temp">Temperature</label>
+                  <div class="input-unit">
+                    <input class="input" id="f-a-temp" name="a.temp" type="number" inputmode="decimal" step="0.1" min="30" max="45" />
+                    <span class="input-unit__suffix">°C</span>
+                  </div>
+                  <p class="field-error" hidden>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                    <span></span>
+                  </p>
+                </div>
+                <div class="q" data-required="value" data-error="Enter a heart rate between 20 and 250 bpm.">
+                  <label class="label" for="f-a-hr">Heart rate</label>
+                  <div class="input-unit">
+                    <input class="input" id="f-a-hr" name="a.hr" type="number" inputmode="decimal" step="1" min="20" max="250" />
+                    <span class="input-unit__suffix">bpm</span>
+                  </div>
+                  <p class="field-error" hidden>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                    <span></span>
+                  </p>
+                </div>
+                <div class="q" data-required="value" data-error="Enter a respiratory rate between 4 and 60 /min.">
+                  <label class="label" for="f-a-rr">Respiratory rate</label>
+                  <div class="input-unit">
+                    <input class="input" id="f-a-rr" name="a.rr" type="number" inputmode="decimal" step="1" min="4" max="60" />
+                    <span class="input-unit__suffix">/min</span>
+                  </div>
+                  <p class="field-error" hidden>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                    <span></span>
+                  </p>
+                </div>
+              </div>
+              <div class="callout callout-danger" data-alert="sirs" hidden>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg>
+                <div><strong>2 or more SIRS signs</strong><p>Possible systemic infection (temperature &gt; 38 or &lt; 36 °C, HR &gt; 90, RR &gt; 20). The practitioner will be alerted when you send.</p></div>
+              </div>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="8" height="4" x="8" y="2" rx="1" ry="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="M12 11h4" /><path d="M12 16h4" /><path d="M8 11h.01" /><path d="M8 16h.01" /></svg>Encounter</h3>
+              <fieldset class="q" data-required="radio" data-error="Choose the reason for screening.">
+                <legend class="label">Reason for screening</legend>
+                <div class="chips">
+                  <label class="chip"><input type="radio" name="a.reason" value="annual-review" /><span>Annual review</span></label>
+                  <label class="chip"><input type="radio" name="a.reason" value="new-diagnosis" /><span>New diagnosis</span></label>
+                  <label class="chip"><input type="radio" name="a.reason" value="foot-problem" /><span>Foot problem</span></label>
+                </div>
+                <p class="field-error" hidden>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                  <span></span>
+                </p>
+              </fieldset>
+              <div class="q">
+                <label class="label" for="f-a-complaint">Current complaint <span class="label__optional">(optional)</span></label>
+                <textarea class="input textarea" id="f-a-complaint" name="a.complaint" rows="2"></textarea>
+              </div>
+            </section>
+          </div>
+        </details>
+
+        <details class="form-section" data-section="B" data-optional>
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">B</span>
+            <span class="form-section__title"><span class="sr-only">Section B: </span>Risk History</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 17 2 2 4-4" /><path d="m3 7 2 2 4-4" /><path d="M13 6h8" /><path d="M13 12h8" /><path d="M13 18h8" /></svg>Conditions</h3>
+              <p class="field-hint">Pre-filled from the record. Update anything that has changed.</p>
+              <fieldset class="q">
+                <legend class="label">Risk history</legend>
+                <div class="chips">
+                  <label class="chip"><input type="checkbox" name="b.history" value="ckd" /><span>CKD / dialysis</span></label>
+                  <label class="chip"><input type="checkbox" name="b.history" value="cardiovascular" /><span>Cardiovascular disease</span></label>
+                  <label class="chip"><input type="checkbox" name="b.history" value="retinopathy" /><span>Retinopathy</span></label>
+                  <label class="chip"><input type="checkbox" name="b.history" value="immunosuppression" /><span>Immunosuppression</span></label>
+                  <label class="chip"><input type="checkbox" name="b.history" value="pad" /><span>PAD / revascularisation</span></label>
+                  <label class="chip"><input type="checkbox" name="b.history" value="neuropathy" /><span>Neuropathy diagnosed</span></label>
+                  <label class="chip"><input type="checkbox" name="b.history" value="poor-vision" /><span>Poor vision / self-care limitation</span></label>
+                </div>
+              </fieldset>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 12H3a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h14" /><path d="M18 8c0-2.5-2-2.5-2-5" /><path d="M21 16a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1" /><path d="M22 8c0-2.5-2-2.5-2-5" /><path d="M7 12v4" /></svg>Smoking</h3>
+              <fieldset class="q">
+                <legend class="label">Smoking status</legend>
+                <div class="chips">
+                  <label class="chip"><input type="radio" name="b.smoking" value="never" /><span>Never</span></label>
+                  <label class="chip"><input type="radio" name="b.smoking" value="former" /><span>Former</span></label>
+                  <label class="chip"><input type="radio" name="b.smoking" value="current" /><span>Current</span></label>
+                </div>
+              </fieldset>
+            </section>
+          </div>
+        </details>
+
+        <details class="form-section" data-section="C">
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">C</span>
+            <span class="form-section__title"><span class="sr-only">Section C: </span>Neurological Findings</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7h-9" /><path d="M14 17H5" /><circle cx="17" cy="17" r="3" /><circle cx="7" cy="7" r="3" /></svg>Test method</h3>
+              <fieldset class="q" data-required="radio" data-error="Choose the test method.">
+                <legend class="label">Sensation test method</legend>
+                <p class="field-hint">Light touch: fingertip on each toe tip for 1–2 s (MOH fallback when no monofilament or tuning fork).</p>
+                <div class="chips">
+                  <label class="chip"><input type="radio" name="c.method" value="monofilament" /><span>10 g monofilament</span></label>
+                  <label class="chip"><input type="radio" name="c.method" value="light-touch" /><span>Light touch (no monofilament)</span></label>
+                </div>
+                <p class="field-error" hidden>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                  <span></span>
+                </p>
+              </fieldset>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2" /><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2" /><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" /><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" /></svg>Protective sensation</h3>
+              <div class="foot-grid">
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Left foot</legend>
+                  <div class="sens-layout">
+                    <div class="sens-map">
+                      <svg class="foot-map__svg" viewBox="0 0 100 220" data-side="left" data-view="plantar" role="group" aria-label="Left foot sensation sites">
+                        <g transform="translate(100 0) scale(-1 1)">
+                          <path class="foot-outline" d="M22,48 C18,62 18,80 22,95 C26,115 30,135 30,155 C30,175 28,190 34,203 C40,214 62,214 68,203 C74,190 72,172 74,150 C76,128 86,108 90,88 C94,70 92,56 86,50 C72,44 36,42 22,48 Z" />
+                          <ellipse class="foot-landmark" data-zone="hallux" cx="30" cy="28" rx="11" ry="14"><title>Hallux</title></ellipse>
+                          <ellipse class="foot-landmark" data-zone="toe2" cx="50" cy="20" rx="7" ry="9"><title>2nd toe</title></ellipse>
+                          <ellipse class="foot-landmark" data-zone="toe3" cx="63" cy="24" rx="6.5" ry="8.5"><title>3rd toe</title></ellipse>
+                          <ellipse class="foot-landmark" data-zone="toe4" cx="74" cy="31" rx="6" ry="8"><title>4th toe</title></ellipse>
+                          <ellipse class="foot-landmark" data-zone="toe5" cx="83" cy="41" rx="5.5" ry="7"><title>5th toe</title></ellipse>
+                          <circle class="foot-landmark" data-zone="mth1" cx="32" cy="66" r="9"><title>1st metatarsal head</title></circle>
+                          <circle class="foot-landmark" data-zone="mth2" cx="50" cy="62" r="6.5"><title>2nd metatarsal head</title></circle>
+                          <circle class="foot-landmark" data-zone="mth3" cx="62.5" cy="64" r="5.5"><title>3rd metatarsal head</title></circle>
+                          <circle class="foot-landmark" data-zone="mth4" cx="73.5" cy="68.5" r="5.5"><title>4th metatarsal head</title></circle>
+                          <circle class="foot-landmark" data-zone="mth5" cx="82.5" cy="75" r="5.5"><title>5th metatarsal head</title></circle>
+                          <ellipse class="foot-landmark" data-zone="midfoot" cx="58" cy="125" rx="18" ry="26"><title>Midfoot</title></ellipse>
+                          <ellipse class="foot-landmark" data-zone="heel" cx="51" cy="188" rx="16" ry="17"><title>Heel</title></ellipse>
+                        </g>
+                        <g class="sens-marker" data-target="c.left.hallux" data-site="Hallux" role="button" tabindex="0"><circle cx="70" cy="28" r="8" /><text x="70" y="28"></text></g>
+                        <g class="sens-marker" data-target="c.left.mth1" data-site="1st metatarsal head" role="button" tabindex="0"><circle cx="68" cy="66" r="8" /><text x="68" y="66"></text></g>
+                        <g class="sens-marker" data-target="c.left.mth5" data-site="5th metatarsal head" role="button" tabindex="0"><circle cx="17.5" cy="75" r="8" /><text x="17.5" y="75"></text></g>
+                      </svg>
+                      <p class="field-hint">Tap a site to cycle the result.</p>
+                    </div>
+                    <div class="sens-layout__fields">
+                      <fieldset class="q" data-required="radio" data-error="Record hallux (plantar), left foot.">
+                        <legend class="label">Hallux (plantar)</legend>
+                        <div class="chips">
+                          <label class="chip"><input type="radio" name="c.left.hallux" value="detected" /><span>Detected</span></label>
+                          <label class="chip"><input type="radio" name="c.left.hallux" value="absent" /><span>Absent</span></label>
+                          <label class="chip"><input type="radio" name="c.left.hallux" value="not-assessed" /><span>Not assessed</span></label>
+                        </div>
+                        <p class="field-error" hidden>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                          <span></span>
+                        </p>
+                      </fieldset>
+                      <fieldset class="q" data-required="radio" data-error="Record 1st metatarsal head, left foot.">
+                        <legend class="label">1st metatarsal head</legend>
+                        <div class="chips">
+                          <label class="chip"><input type="radio" name="c.left.mth1" value="detected" /><span>Detected</span></label>
+                          <label class="chip"><input type="radio" name="c.left.mth1" value="absent" /><span>Absent</span></label>
+                          <label class="chip"><input type="radio" name="c.left.mth1" value="not-assessed" /><span>Not assessed</span></label>
+                        </div>
+                        <p class="field-error" hidden>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                          <span></span>
+                        </p>
+                      </fieldset>
+                      <fieldset class="q" data-required="radio" data-error="Record 5th metatarsal head, left foot.">
+                        <legend class="label">5th metatarsal head</legend>
+                        <div class="chips">
+                          <label class="chip"><input type="radio" name="c.left.mth5" value="detected" /><span>Detected</span></label>
+                          <label class="chip"><input type="radio" name="c.left.mth5" value="absent" /><span>Absent</span></label>
+                          <label class="chip"><input type="radio" name="c.left.mth5" value="not-assessed" /><span>Not assessed</span></label>
+                        </div>
+                        <p class="field-error" hidden>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                          <span></span>
+                        </p>
+                      </fieldset>
+                    </div>
+                  </div>
+                </fieldset>
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Right foot</legend>
+                  <div class="sens-layout">
+                    <div class="sens-map">
+                      <svg class="foot-map__svg" viewBox="0 0 100 220" data-side="right" data-view="plantar" role="group" aria-label="Right foot sensation sites">
+                        <g>
+                          <path class="foot-outline" d="M22,48 C18,62 18,80 22,95 C26,115 30,135 30,155 C30,175 28,190 34,203 C40,214 62,214 68,203 C74,190 72,172 74,150 C76,128 86,108 90,88 C94,70 92,56 86,50 C72,44 36,42 22,48 Z" />
+                          <ellipse class="foot-landmark" data-zone="hallux" cx="30" cy="28" rx="11" ry="14"><title>Hallux</title></ellipse>
+                          <ellipse class="foot-landmark" data-zone="toe2" cx="50" cy="20" rx="7" ry="9"><title>2nd toe</title></ellipse>
+                          <ellipse class="foot-landmark" data-zone="toe3" cx="63" cy="24" rx="6.5" ry="8.5"><title>3rd toe</title></ellipse>
+                          <ellipse class="foot-landmark" data-zone="toe4" cx="74" cy="31" rx="6" ry="8"><title>4th toe</title></ellipse>
+                          <ellipse class="foot-landmark" data-zone="toe5" cx="83" cy="41" rx="5.5" ry="7"><title>5th toe</title></ellipse>
+                          <circle class="foot-landmark" data-zone="mth1" cx="32" cy="66" r="9"><title>1st metatarsal head</title></circle>
+                          <circle class="foot-landmark" data-zone="mth2" cx="50" cy="62" r="6.5"><title>2nd metatarsal head</title></circle>
+                          <circle class="foot-landmark" data-zone="mth3" cx="62.5" cy="64" r="5.5"><title>3rd metatarsal head</title></circle>
+                          <circle class="foot-landmark" data-zone="mth4" cx="73.5" cy="68.5" r="5.5"><title>4th metatarsal head</title></circle>
+                          <circle class="foot-landmark" data-zone="mth5" cx="82.5" cy="75" r="5.5"><title>5th metatarsal head</title></circle>
+                          <ellipse class="foot-landmark" data-zone="midfoot" cx="58" cy="125" rx="18" ry="26"><title>Midfoot</title></ellipse>
+                          <ellipse class="foot-landmark" data-zone="heel" cx="51" cy="188" rx="16" ry="17"><title>Heel</title></ellipse>
+                        </g>
+                        <g class="sens-marker" data-target="c.right.hallux" data-site="Hallux" role="button" tabindex="0"><circle cx="30" cy="28" r="8" /><text x="30" y="28"></text></g>
+                        <g class="sens-marker" data-target="c.right.mth1" data-site="1st metatarsal head" role="button" tabindex="0"><circle cx="32" cy="66" r="8" /><text x="32" y="66"></text></g>
+                        <g class="sens-marker" data-target="c.right.mth5" data-site="5th metatarsal head" role="button" tabindex="0"><circle cx="82.5" cy="75" r="8" /><text x="82.5" y="75"></text></g>
+                      </svg>
+                      <p class="field-hint">Tap a site to cycle the result.</p>
+                    </div>
+                    <div class="sens-layout__fields">
+                      <fieldset class="q" data-required="radio" data-error="Record hallux (plantar), right foot.">
+                        <legend class="label">Hallux (plantar)</legend>
+                        <div class="chips">
+                          <label class="chip"><input type="radio" name="c.right.hallux" value="detected" /><span>Detected</span></label>
+                          <label class="chip"><input type="radio" name="c.right.hallux" value="absent" /><span>Absent</span></label>
+                          <label class="chip"><input type="radio" name="c.right.hallux" value="not-assessed" /><span>Not assessed</span></label>
+                        </div>
+                        <p class="field-error" hidden>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                          <span></span>
+                        </p>
+                      </fieldset>
+                      <fieldset class="q" data-required="radio" data-error="Record 1st metatarsal head, right foot.">
+                        <legend class="label">1st metatarsal head</legend>
+                        <div class="chips">
+                          <label class="chip"><input type="radio" name="c.right.mth1" value="detected" /><span>Detected</span></label>
+                          <label class="chip"><input type="radio" name="c.right.mth1" value="absent" /><span>Absent</span></label>
+                          <label class="chip"><input type="radio" name="c.right.mth1" value="not-assessed" /><span>Not assessed</span></label>
+                        </div>
+                        <p class="field-error" hidden>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                          <span></span>
+                        </p>
+                      </fieldset>
+                      <fieldset class="q" data-required="radio" data-error="Record 5th metatarsal head, right foot.">
+                        <legend class="label">5th metatarsal head</legend>
+                        <div class="chips">
+                          <label class="chip"><input type="radio" name="c.right.mth5" value="detected" /><span>Detected</span></label>
+                          <label class="chip"><input type="radio" name="c.right.mth5" value="absent" /><span>Absent</span></label>
+                          <label class="chip"><input type="radio" name="c.right.mth5" value="not-assessed" /><span>Not assessed</span></label>
+                        </div>
+                        <p class="field-error" hidden>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                          <span></span>
+                        </p>
+                      </fieldset>
+                    </div>
+                  </div>
+                </fieldset>
+              </div>
+              <ul class="map-legend" aria-hidden="true">
+                <li><span class="map-legend__dot" data-state="detected">+</span>Detected</li>
+                <li><span class="map-legend__dot" data-state="absent">−</span>Absent</li>
+                <li><span class="map-legend__dot" data-state="not-assessed">?</span>Not assessed</li>
+                <li><span class="map-legend__dot"></span>Not recorded</li>
+              </ul>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 13a2 2 0 0 0 2-2V7a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0V4a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0v-4a2 2 0 0 1 2-2" /></svg>Vibration</h3>
+              <div class="foot-grid">
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Left foot</legend>
+                  <fieldset class="q" data-required="radio" data-error="Record the tuning fork result, left foot.">
+                    <legend class="label">128 Hz tuning fork (dorsal hallux)</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="c.left.vibration" value="present" /><span>Present</span></label>
+                      <label class="chip"><input type="radio" name="c.left.vibration" value="reduced" /><span>Reduced</span></label>
+                      <label class="chip"><input type="radio" name="c.left.vibration" value="absent" /><span>Absent</span></label>
+                      <label class="chip"><input type="radio" name="c.left.vibration" value="not-assessed" /><span>Not assessed</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="q">
+                    <label class="label" for="f-c-left-vpt">Vibration perception threshold</label>
+                    <div class="input-unit">
+                      <input class="input" id="f-c-left-vpt" name="c.left.vpt" type="number" inputmode="decimal" step="0.5" min="0" max="60" />
+                      <span class="input-unit__suffix">V</span>
+                    </div>
+                    <p class="field-hint">Only if a VPT device is available.</p>
+                  </div>
+                </fieldset>
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Right foot</legend>
+                  <fieldset class="q" data-required="radio" data-error="Record the tuning fork result, right foot.">
+                    <legend class="label">128 Hz tuning fork (dorsal hallux)</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="c.right.vibration" value="present" /><span>Present</span></label>
+                      <label class="chip"><input type="radio" name="c.right.vibration" value="reduced" /><span>Reduced</span></label>
+                      <label class="chip"><input type="radio" name="c.right.vibration" value="absent" /><span>Absent</span></label>
+                      <label class="chip"><input type="radio" name="c.right.vibration" value="not-assessed" /><span>Not assessed</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="q">
+                    <label class="label" for="f-c-right-vpt">Vibration perception threshold</label>
+                    <div class="input-unit">
+                      <input class="input" id="f-c-right-vpt" name="c.right.vpt" type="number" inputmode="decimal" step="0.5" min="0" max="60" />
+                      <span class="input-unit__suffix">V</span>
+                    </div>
+                    <p class="field-hint">Only if a VPT device is available.</p>
+                  </div>
+                </fieldset>
+              </div>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" /></svg>Neuropathic symptoms</h3>
+              <fieldset class="q" data-required="any" data-error="Choose the symptoms, or “No neuropathic symptoms”.">
+                <legend class="label">Symptoms reported</legend>
+                <div class="chips">
+                  <label class="chip"><input type="checkbox" name="c.symptoms" value="numbness" /><span>Numbness</span></label>
+                  <label class="chip"><input type="checkbox" name="c.symptoms" value="burning" /><span>Burning pain</span></label>
+                  <label class="chip"><input type="checkbox" name="c.symptoms" value="tingling" /><span>Pins and needles / tingling</span></label>
+                  <label class="chip"><input type="checkbox" name="c.symptoms" value="electric" /><span>Electric-shock pain</span></label>
+                  <label class="chip"><input type="checkbox" name="c.symptoms" value="allodynia" /><span>Allodynia / hypersensitivity</span></label>
+                  <label class="chip"><input type="checkbox" name="c.symptoms" value="none" data-exclusive /><span>No neuropathic symptoms</span></label>
+                </div>
+                <p class="field-error" hidden>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                  <span></span>
+                </p>
+              </fieldset>
+              <div class="reveal" data-reveal="symptoms" hidden>
+                <div class="q">
+                  <label class="label" for="f-c-severity">Symptom severity <output class="range-value" for="f-c-severity" data-range-output>5</output><span class="range-max">/ 10</span></label>
+                  <input class="range" id="f-c-severity" name="c.severity" type="range" min="0" max="10" step="1" value="5" />
+                </div>
+                <fieldset class="q" data-required="radio" data-error="Answer whether symptoms are worse at night.">
+                  <legend class="label">Worse at night?</legend>
+                  <div class="chips">
+                    <label class="chip"><input type="radio" name="c.night" value="yes" /><span>Yes</span></label>
+                    <label class="chip"><input type="radio" name="c.night" value="no" /><span>No</span></label>
+                  </div>
+                  <p class="field-error" hidden>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                    <span></span>
+                  </p>
+                </fieldset>
+              </div>
+            </section>
+          </div>
+        </details>
+
+        <details class="form-section" data-section="D">
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">D</span>
+            <span class="form-section__title"><span class="sr-only">Section D: </span>Vascular Bedside Signs</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z" /><path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z" /><path d="M16 17h4" /><path d="M4 13h4" /></svg>Claudication</h3>
+              <fieldset class="q" data-required="radio" data-error="Answer the claudication question.">
+                <legend class="label">History of intermittent claudication</legend>
+                <div class="chips">
+                  <label class="chip"><input type="radio" name="d.claudication" value="yes" /><span>Yes</span></label>
+                  <label class="chip"><input type="radio" name="d.claudication" value="no" /><span>No</span></label>
+                </div>
+                <p class="field-error" hidden>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                  <span></span>
+                </p>
+              </fieldset>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27" /></svg>Pulses</h3>
+              <div class="foot-grid">
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Left foot</legend>
+                  <fieldset class="q" data-required="radio" data-error="Record the dorsalis pedis pulse, left foot.">
+                    <legend class="label">Dorsalis pedis</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="d.left.dp" value="present" /><span>Present</span></label>
+                      <label class="chip"><input type="radio" name="d.left.dp" value="weak" /><span>Weak</span></label>
+                      <label class="chip"><input type="radio" name="d.left.dp" value="absent" /><span>Absent</span></label>
+                      <label class="chip"><input type="radio" name="d.left.dp" value="not-assessed" /><span>Not assessed</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <fieldset class="q" data-required="radio" data-error="Record the posterior tibial pulse, left foot.">
+                    <legend class="label">Posterior tibial</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="d.left.pt" value="present" /><span>Present</span></label>
+                      <label class="chip"><input type="radio" name="d.left.pt" value="weak" /><span>Weak</span></label>
+                      <label class="chip"><input type="radio" name="d.left.pt" value="absent" /><span>Absent</span></label>
+                      <label class="chip"><input type="radio" name="d.left.pt" value="not-assessed" /><span>Not assessed</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                </fieldset>
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Right foot</legend>
+                  <fieldset class="q" data-required="radio" data-error="Record the dorsalis pedis pulse, right foot.">
+                    <legend class="label">Dorsalis pedis</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="d.right.dp" value="present" /><span>Present</span></label>
+                      <label class="chip"><input type="radio" name="d.right.dp" value="weak" /><span>Weak</span></label>
+                      <label class="chip"><input type="radio" name="d.right.dp" value="absent" /><span>Absent</span></label>
+                      <label class="chip"><input type="radio" name="d.right.dp" value="not-assessed" /><span>Not assessed</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <fieldset class="q" data-required="radio" data-error="Record the posterior tibial pulse, right foot.">
+                    <legend class="label">Posterior tibial</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="d.right.pt" value="present" /><span>Present</span></label>
+                      <label class="chip"><input type="radio" name="d.right.pt" value="weak" /><span>Weak</span></label>
+                      <label class="chip"><input type="radio" name="d.right.pt" value="absent" /><span>Absent</span></label>
+                      <label class="chip"><input type="radio" name="d.right.pt" value="not-assessed" /><span>Not assessed</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                </fieldset>
+              </div>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" /></svg>Doppler &amp; capillary refill</h3>
+              <div class="foot-grid">
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Left foot</legend>
+                  <fieldset class="q">
+                    <legend class="label">Doppler waveform</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="d.left.doppler" value="tri" /><span>Triphasic</span></label>
+                      <label class="chip"><input type="radio" name="d.left.doppler" value="bi" /><span>Biphasic</span></label>
+                      <label class="chip"><input type="radio" name="d.left.doppler" value="mono" /><span>Monophasic</span></label>
+                      <label class="chip"><input type="radio" name="d.left.doppler" value="not-done" /><span>Not done</span></label>
+                    </div>
+                  </fieldset>
+                  <div class="q">
+                    <label class="label" for="f-d-left-crt">Capillary refill</label>
+                    <div class="input-unit">
+                      <input class="input" id="f-d-left-crt" name="d.left.crt" type="number" inputmode="decimal" step="0.5" min="0" max="20" />
+                      <span class="input-unit__suffix">s</span>
+                    </div>
+                  </div>
+                </fieldset>
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Right foot</legend>
+                  <fieldset class="q">
+                    <legend class="label">Doppler waveform</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="d.right.doppler" value="tri" /><span>Triphasic</span></label>
+                      <label class="chip"><input type="radio" name="d.right.doppler" value="bi" /><span>Biphasic</span></label>
+                      <label class="chip"><input type="radio" name="d.right.doppler" value="mono" /><span>Monophasic</span></label>
+                      <label class="chip"><input type="radio" name="d.right.doppler" value="not-done" /><span>Not done</span></label>
+                    </div>
+                  </fieldset>
+                  <div class="q">
+                    <label class="label" for="f-d-right-crt">Capillary refill</label>
+                    <div class="input-unit">
+                      <input class="input" id="f-d-right-crt" name="d.right.crt" type="number" inputmode="decimal" step="0.5" min="0" max="20" />
+                      <span class="input-unit__suffix">s</span>
+                    </div>
+                  </div>
+                </fieldset>
+              </div>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z" /><path d="M12.56 6.6A10.97 10.97 0 0 0 14 3.02c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a6.98 6.98 0 0 1-11.91 4.97" /></svg>Skin &amp; venous changes</h3>
+              <div class="foot-grid">
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Left foot</legend>
+                  <!-- assumed: option list not in spec -->
+                  <fieldset class="q">
+                    <legend class="label">Skin colour, temperature, oedema</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="checkbox" name="d.left.skin" value="pallor" /><span>Pallor</span></label>
+                      <label class="chip"><input type="checkbox" name="d.left.skin" value="rubor" /><span>Rubor</span></label>
+                      <label class="chip"><input type="checkbox" name="d.left.skin" value="cyanosis" /><span>Cyanosis</span></label>
+                      <label class="chip"><input type="checkbox" name="d.left.skin" value="cool" /><span>Cool foot</span></label>
+                      <label class="chip"><input type="checkbox" name="d.left.skin" value="gradient" /><span>Temperature gradient</span></label>
+                      <label class="chip"><input type="checkbox" name="d.left.skin" value="oedema" /><span>Oedema</span></label>
+                      <label class="chip"><input type="checkbox" name="d.left.skin" value="none" data-exclusive /><span>None</span></label>
+                    </div>
+                  </fieldset>
+                  <fieldset class="q">
+                    <legend class="label">Venous / trophic changes</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="checkbox" name="d.left.venous" value="sclerosis" /><span>Sclerosis / induration</span></label>
+                      <label class="chip"><input type="checkbox" name="d.left.venous" value="spider" /><span>Spider veins</span></label>
+                      <label class="chip"><input type="checkbox" name="d.left.venous" value="varicose" /><span>Varicose veins</span></label>
+                      <label class="chip"><input type="checkbox" name="d.left.venous" value="atrophie" /><span>Atrophie blanche</span></label>
+                      <label class="chip"><input type="checkbox" name="d.left.venous" value="none" data-exclusive /><span>None</span></label>
+                    </div>
+                  </fieldset>
+                </fieldset>
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Right foot</legend>
+                  <!-- assumed: option list not in spec -->
+                  <fieldset class="q">
+                    <legend class="label">Skin colour, temperature, oedema</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="checkbox" name="d.right.skin" value="pallor" /><span>Pallor</span></label>
+                      <label class="chip"><input type="checkbox" name="d.right.skin" value="rubor" /><span>Rubor</span></label>
+                      <label class="chip"><input type="checkbox" name="d.right.skin" value="cyanosis" /><span>Cyanosis</span></label>
+                      <label class="chip"><input type="checkbox" name="d.right.skin" value="cool" /><span>Cool foot</span></label>
+                      <label class="chip"><input type="checkbox" name="d.right.skin" value="gradient" /><span>Temperature gradient</span></label>
+                      <label class="chip"><input type="checkbox" name="d.right.skin" value="oedema" /><span>Oedema</span></label>
+                      <label class="chip"><input type="checkbox" name="d.right.skin" value="none" data-exclusive /><span>None</span></label>
+                    </div>
+                  </fieldset>
+                  <fieldset class="q">
+                    <legend class="label">Venous / trophic changes</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="checkbox" name="d.right.venous" value="sclerosis" /><span>Sclerosis / induration</span></label>
+                      <label class="chip"><input type="checkbox" name="d.right.venous" value="spider" /><span>Spider veins</span></label>
+                      <label class="chip"><input type="checkbox" name="d.right.venous" value="varicose" /><span>Varicose veins</span></label>
+                      <label class="chip"><input type="checkbox" name="d.right.venous" value="atrophie" /><span>Atrophie blanche</span></label>
+                      <label class="chip"><input type="checkbox" name="d.right.venous" value="none" data-exclusive /><span>None</span></label>
+                    </div>
+                  </fieldset>
+                </fieldset>
+              </div>
+            </section>
+          </div>
+        </details>
+
+        <details class="form-section" data-section="E" data-optional>
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">E</span>
+            <span class="form-section__title"><span class="sr-only">Section E: </span>Perfusion Measurements</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 2v2" /><path d="M5 2v2" /><path d="M5 3H4a2 2 0 0 0-2 2v4a6 6 0 0 0 12 0V5a2 2 0 0 0-2-2h-1" /><path d="M8 15a6 6 0 0 0 12 0v-3" /><circle cx="20" cy="10" r="2" /></svg>Equipment</h3>
+              <fieldset class="q">
+                <legend class="label">Perfusion equipment available in this room?</legend>
+                <div class="chips">
+                  <label class="chip"><input type="radio" name="e.available" value="yes" /><span>Yes</span></label>
+                  <label class="chip"><input type="radio" name="e.available" value="no" /><span>No</span></label>
+                </div>
+              </fieldset>
+            </section>
+
+            <section class="subsection" data-reveal="perfusion" hidden>
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 14 4-4" /><path d="M3.34 19a10 10 0 1 1 17.32 0" /></svg>Indices</h3>
+              <p class="field-hint">Record raw values only. Classification is done at practitioner review.</p>
+              <div class="foot-grid">
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Left foot</legend>
+                  <div class="q">
+                    <label class="label" for="f-e-left-abi">ABI</label>
+                    <div class="input-unit">
+                      <input class="input" id="f-e-left-abi" name="e.left.abi" type="number" inputmode="decimal" step="0.01" min="0" max="2" />
+                    </div>
+                  </div>
+                  <div class="q">
+                    <label class="label" for="f-e-left-tbi">TBI</label>
+                    <div class="input-unit">
+                      <input class="input" id="f-e-left-tbi" name="e.left.tbi" type="number" inputmode="decimal" step="0.01" min="0" max="2" />
+                    </div>
+                  </div>
+                </fieldset>
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Right foot</legend>
+                  <div class="q">
+                    <label class="label" for="f-e-right-abi">ABI</label>
+                    <div class="input-unit">
+                      <input class="input" id="f-e-right-abi" name="e.right.abi" type="number" inputmode="decimal" step="0.01" min="0" max="2" />
+                    </div>
+                  </div>
+                  <div class="q">
+                    <label class="label" for="f-e-right-tbi">TBI</label>
+                    <div class="input-unit">
+                      <input class="input" id="f-e-right-tbi" name="e.right.tbi" type="number" inputmode="decimal" step="0.01" min="0" max="2" />
+                    </div>
+                  </div>
+                </fieldset>
+              </div>
+            </section>
+
+            <section class="subsection" data-reveal="perfusion" hidden>
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.8 19.6A2 2 0 1 0 14 16H2" /><path d="M17.5 8a2.5 2.5 0 1 1 2 4H2" /><path d="M9.8 4.4A2 2 0 1 1 11 8H2" /></svg>Pressures &amp; oxygen</h3>
+              <div class="foot-grid">
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Left foot</legend>
+                  <div class="q">
+                    <label class="label" for="f-e-left-ankle">Ankle pressure</label>
+                    <div class="input-unit">
+                      <input class="input" id="f-e-left-ankle" name="e.left.ankle" type="number" inputmode="decimal" step="1" min="0" max="300" />
+                      <span class="input-unit__suffix">mmHg</span>
+                    </div>
+                  </div>
+                  <div class="q">
+                    <label class="label" for="f-e-left-toe">Toe pressure</label>
+                    <div class="input-unit">
+                      <input class="input" id="f-e-left-toe" name="e.left.toe" type="number" inputmode="decimal" step="1" min="0" max="300" />
+                      <span class="input-unit__suffix">mmHg</span>
+                    </div>
+                  </div>
+                  <div class="q">
+                    <label class="label" for="f-e-left-tcpo2">TcPO₂</label>
+                    <div class="input-unit">
+                      <input class="input" id="f-e-left-tcpo2" name="e.left.tcpo2" type="number" inputmode="decimal" step="1" min="0" max="150" />
+                      <span class="input-unit__suffix">mmHg</span>
+                    </div>
+                  </div>
+                </fieldset>
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Right foot</legend>
+                  <div class="q">
+                    <label class="label" for="f-e-right-ankle">Ankle pressure</label>
+                    <div class="input-unit">
+                      <input class="input" id="f-e-right-ankle" name="e.right.ankle" type="number" inputmode="decimal" step="1" min="0" max="300" />
+                      <span class="input-unit__suffix">mmHg</span>
+                    </div>
+                  </div>
+                  <div class="q">
+                    <label class="label" for="f-e-right-toe">Toe pressure</label>
+                    <div class="input-unit">
+                      <input class="input" id="f-e-right-toe" name="e.right.toe" type="number" inputmode="decimal" step="1" min="0" max="300" />
+                      <span class="input-unit__suffix">mmHg</span>
+                    </div>
+                  </div>
+                  <div class="q">
+                    <label class="label" for="f-e-right-tcpo2">TcPO₂</label>
+                    <div class="input-unit">
+                      <input class="input" id="f-e-right-tcpo2" name="e.right.tcpo2" type="number" inputmode="decimal" step="1" min="0" max="150" />
+                      <span class="input-unit__suffix">mmHg</span>
+                    </div>
+                  </div>
+                </fieldset>
+              </div>
+            </section>
+          </div>
+        </details>
+
+        <details class="form-section" data-section="F" data-optional>
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">F</span>
+            <span class="form-section__title"><span class="sr-only">Section F: </span>Deformity, Skin</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 10c.7-.7 1.69 0 2.5 0a2.5 2.5 0 1 0 0-5 .5.5 0 0 1-.5-.5 2.5 2.5 0 1 0-5 0c0 .81.7 1.8 0 2.5l-7 7c-.7.7-1.69 0-2.5 0a2.5 2.5 0 0 0 0 5c.28 0 .5.22.5.5a2.5 2.5 0 1 0 5 0c0-.81-.7-1.8 0-2.5Z" /></svg>Deformity</h3>
+              <div class="foot-grid">
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Left foot</legend>
+                  <!-- assumed: full checklist not in spec (spec lists callus, dry skin, fissures, claw toes, prominent MTHs "etc.") -->
+                  <fieldset class="q">
+                    <legend class="label">Findings</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="checkbox" name="f.left.deformity" value="claw-toes" /><span>Claw toes</span></label>
+                      <label class="chip"><input type="checkbox" name="f.left.deformity" value="hammer-toes" /><span>Hammer toes</span></label>
+                      <label class="chip"><input type="checkbox" name="f.left.deformity" value="hallux-valgus" /><span>Hallux valgus</span></label>
+                      <label class="chip"><input type="checkbox" name="f.left.deformity" value="prominent-mth" /><span>Prominent metatarsal heads</span></label>
+                      <label class="chip"><input type="checkbox" name="f.left.deformity" value="high-arch" /><span>High arch</span></label>
+                      <label class="chip"><input type="checkbox" name="f.left.deformity" value="flat-foot" /><span>Flat foot</span></label>
+                      <label class="chip"><input type="checkbox" name="f.left.deformity" value="limited-joint" /><span>Limited joint mobility</span></label>
+                      <label class="chip"><input type="checkbox" name="f.left.deformity" value="none" data-exclusive /><span>None</span></label>
+                    </div>
+                  </fieldset>
+                </fieldset>
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Right foot</legend>
+                  <!-- assumed: full checklist not in spec (spec lists callus, dry skin, fissures, claw toes, prominent MTHs "etc.") -->
+                  <fieldset class="q">
+                    <legend class="label">Findings</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="checkbox" name="f.right.deformity" value="claw-toes" /><span>Claw toes</span></label>
+                      <label class="chip"><input type="checkbox" name="f.right.deformity" value="hammer-toes" /><span>Hammer toes</span></label>
+                      <label class="chip"><input type="checkbox" name="f.right.deformity" value="hallux-valgus" /><span>Hallux valgus</span></label>
+                      <label class="chip"><input type="checkbox" name="f.right.deformity" value="prominent-mth" /><span>Prominent metatarsal heads</span></label>
+                      <label class="chip"><input type="checkbox" name="f.right.deformity" value="high-arch" /><span>High arch</span></label>
+                      <label class="chip"><input type="checkbox" name="f.right.deformity" value="flat-foot" /><span>Flat foot</span></label>
+                      <label class="chip"><input type="checkbox" name="f.right.deformity" value="limited-joint" /><span>Limited joint mobility</span></label>
+                      <label class="chip"><input type="checkbox" name="f.right.deformity" value="none" data-exclusive /><span>None</span></label>
+                    </div>
+                  </fieldset>
+                </fieldset>
+              </div>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z" /><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65" /><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65" /></svg>Skin</h3>
+              <div class="foot-grid">
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Left foot</legend>
+                  <!-- assumed: option list not in spec -->
+                  <fieldset class="q">
+                    <legend class="label">Findings</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="checkbox" name="f.left.skin" value="callus" /><span>Callus</span></label>
+                      <label class="chip"><input type="checkbox" name="f.left.skin" value="dry" /><span>Dry skin</span></label>
+                      <label class="chip"><input type="checkbox" name="f.left.skin" value="fissures" /><span>Fissures</span></label>
+                      <label class="chip"><input type="checkbox" name="f.left.skin" value="maceration" /><span>Maceration</span></label>
+                      <label class="chip"><input type="checkbox" name="f.left.skin" value="blister" /><span>Blister</span></label>
+                      <label class="chip"><input type="checkbox" name="f.left.skin" value="pre-ulcer" /><span>Pre-ulcerative lesion</span></label>
+                      <label class="chip"><input type="checkbox" name="f.left.skin" value="none" data-exclusive /><span>None</span></label>
+                    </div>
+                  </fieldset>
+                </fieldset>
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Right foot</legend>
+                  <!-- assumed: option list not in spec -->
+                  <fieldset class="q">
+                    <legend class="label">Findings</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="checkbox" name="f.right.skin" value="callus" /><span>Callus</span></label>
+                      <label class="chip"><input type="checkbox" name="f.right.skin" value="dry" /><span>Dry skin</span></label>
+                      <label class="chip"><input type="checkbox" name="f.right.skin" value="fissures" /><span>Fissures</span></label>
+                      <label class="chip"><input type="checkbox" name="f.right.skin" value="maceration" /><span>Maceration</span></label>
+                      <label class="chip"><input type="checkbox" name="f.right.skin" value="blister" /><span>Blister</span></label>
+                      <label class="chip"><input type="checkbox" name="f.right.skin" value="pre-ulcer" /><span>Pre-ulcerative lesion</span></label>
+                      <label class="chip"><input type="checkbox" name="f.right.skin" value="none" data-exclusive /><span>None</span></label>
+                    </div>
+                  </fieldset>
+                </fieldset>
+              </div>
+            </section>
+          </div>
+        </details>
+
+        <details class="form-section" data-section="G">
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">G</span>
+            <span class="form-section__title"><span class="sr-only">Section G: </span>Nail &amp; Footwear</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3" /><path d="M8.12 8.12 12 12" /><path d="M20 4 8.12 15.88" /><circle cx="6" cy="18" r="3" /><path d="M14.8 14.8 20 20" /></svg>Nails</h3>
+              <div class="foot-grid">
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Left foot</legend>
+                  <!-- assumed: option list not in spec -->
+                  <fieldset class="q">
+                    <legend class="label">Findings</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="checkbox" name="g.left.nails" value="thickened" /><span>Thickened / dystrophic</span></label>
+                      <label class="chip"><input type="checkbox" name="g.left.nails" value="ingrown" /><span>Ingrown</span></label>
+                      <label class="chip"><input type="checkbox" name="g.left.nails" value="fungal" /><span>Fungal infection</span></label>
+                      <label class="chip"><input type="checkbox" name="g.left.nails" value="long" /><span>Long / poorly cut</span></label>
+                      <label class="chip"><input type="checkbox" name="g.left.nails" value="none" data-exclusive /><span>None</span></label>
+                    </div>
+                  </fieldset>
+                </fieldset>
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Right foot</legend>
+                  <!-- assumed: option list not in spec -->
+                  <fieldset class="q">
+                    <legend class="label">Findings</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="checkbox" name="g.right.nails" value="thickened" /><span>Thickened / dystrophic</span></label>
+                      <label class="chip"><input type="checkbox" name="g.right.nails" value="ingrown" /><span>Ingrown</span></label>
+                      <label class="chip"><input type="checkbox" name="g.right.nails" value="fungal" /><span>Fungal infection</span></label>
+                      <label class="chip"><input type="checkbox" name="g.right.nails" value="long" /><span>Long / poorly cut</span></label>
+                      <label class="chip"><input type="checkbox" name="g.right.nails" value="none" data-exclusive /><span>None</span></label>
+                    </div>
+                  </fieldset>
+                </fieldset>
+              </div>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 16v-2.38C4 11.5 2.97 10.5 3 8c.03-2.72 1.49-6 4.5-6C9.37 2 10 3.8 10 5.5c0 3.11-2 5.66-2 8.68V16a2 2 0 1 1-4 0Z" /><path d="M20 20v-2.38c0-2.12 1.03-3.12 1-5.62-.03-2.72-1.49-6-4.5-6C14.63 6 14 7.8 14 9.5c0 3.11 2 5.66 2 8.68V20a2 2 0 1 0 4 0Z" /><path d="M16 17h4" /><path d="M4 13h4" /></svg>Footwear</h3>
+              <fieldset class="q" data-required="radio" data-error="Answer the footwear question.">
+                <legend class="label">Footwear appropriate for the patient&#x27;s foot risk?</legend>
+                <div class="chips">
+                  <label class="chip"><input type="radio" name="g.footwear" value="yes" /><span>Yes</span></label>
+                  <label class="chip"><input type="radio" name="g.footwear" value="no" /><span>No</span></label>
+                </div>
+                <p class="field-error" hidden>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                  <span></span>
+                </p>
+              </fieldset>
+              <div class="reveal" data-reveal="footwear" hidden>
+                <!-- assumed: chip values not in spec -->
+                <fieldset class="q" data-required="any" data-error="Choose at least one footwear concern.">
+                  <legend class="label">Footwear concerns</legend>
+                  <div class="chips">
+                    <label class="chip"><input type="checkbox" name="g.concerns" value="poor-fit" /><span>Poor fit / too tight</span></label>
+                    <label class="chip"><input type="checkbox" name="g.concerns" value="worn" /><span>Worn out</span></label>
+                    <label class="chip"><input type="checkbox" name="g.concerns" value="thin-slippers" /><span>Barefoot / thin slippers</span></label>
+                    <label class="chip"><input type="checkbox" name="g.concerns" value="needs-insole" /><span>Needs insole / offloading</span></label>
+                    <label class="chip"><input type="checkbox" name="g.concerns" value="gait" /><span>Gait / plantar-pressure concern</span></label>
+                  </div>
+                  <p class="field-error" hidden>
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                    <span></span>
+                  </p>
+                </fieldset>
+              </div>
+            </section>
+          </div>
+        </details>
+
+        <details class="form-section" data-section="H">
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">H</span>
+            <span class="form-section__title"><span class="sr-only">Section H: </span>Charcot Red-flag Screen</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" x2="4" y1="22" y2="15" /></svg>Red flags</h3>
+              <p class="field-hint">Always performed, both feet.</p>
+              <div class="foot-grid">
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Left foot</legend>
+                  <fieldset class="q" data-required="any" data-error="Record the red flags, or “No red flags”, left foot.">
+                    <legend class="label">Red flags</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="checkbox" name="h.left.flags" value="warmth" /><span>Unilateral warmth</span></label>
+                      <label class="chip"><input type="checkbox" name="h.left.flags" value="swelling" /><span>Swelling / oedema</span></label>
+                      <label class="chip"><input type="checkbox" name="h.left.flags" value="redness" /><span>Redness / erythema</span></label>
+                      <label class="chip"><input type="checkbox" name="h.left.flags" value="shape" /><span>Change in foot shape</span></label>
+                      <label class="chip"><input type="checkbox" name="h.left.flags" value="trauma" /><span>Recent minor trauma / more walking</span></label>
+                      <label class="chip"><input type="checkbox" name="h.left.flags" value="minimal-pain" /><span>Minimal pain despite inflammation</span></label>
+                      <label class="chip"><input type="checkbox" name="h.left.flags" value="none" data-exclusive /><span>No red flags</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                </fieldset>
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Right foot</legend>
+                  <fieldset class="q" data-required="any" data-error="Record the red flags, or “No red flags”, right foot.">
+                    <legend class="label">Red flags</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="checkbox" name="h.right.flags" value="warmth" /><span>Unilateral warmth</span></label>
+                      <label class="chip"><input type="checkbox" name="h.right.flags" value="swelling" /><span>Swelling / oedema</span></label>
+                      <label class="chip"><input type="checkbox" name="h.right.flags" value="redness" /><span>Redness / erythema</span></label>
+                      <label class="chip"><input type="checkbox" name="h.right.flags" value="shape" /><span>Change in foot shape</span></label>
+                      <label class="chip"><input type="checkbox" name="h.right.flags" value="trauma" /><span>Recent minor trauma / more walking</span></label>
+                      <label class="chip"><input type="checkbox" name="h.right.flags" value="minimal-pain" /><span>Minimal pain despite inflammation</span></label>
+                      <label class="chip"><input type="checkbox" name="h.right.flags" value="none" data-exclusive /><span>No red flags</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                </fieldset>
+              </div>
+              <div class="callout callout-danger" data-alert="charcot" hidden>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg>
+                <div><strong>Charcot red flag</strong><p>Sending will alert the practitioner immediately, outside the routine queue.</p></div>
+              </div>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z" /></svg>Skin temperature</h3>
+              <div class="foot-grid">
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Left foot</legend>
+                  <div class="q">
+                    <label class="label" for="f-h-left-temp">Infrared reading</label>
+                    <div class="input-unit">
+                      <input class="input" id="f-h-left-temp" name="h.left.temp" type="number" inputmode="decimal" step="0.1" min="15" max="42" />
+                      <span class="input-unit__suffix">°C</span>
+                    </div>
+                  </div>
+                </fieldset>
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Right foot</legend>
+                  <div class="q">
+                    <label class="label" for="f-h-right-temp">Infrared reading</label>
+                    <div class="input-unit">
+                      <input class="input" id="f-h-right-temp" name="h.right.temp" type="number" inputmode="decimal" step="0.1" min="15" max="42" />
+                      <span class="input-unit__suffix">°C</span>
+                    </div>
+                  </div>
+                </fieldset>
+              </div>
+              <p class="temp-diff" data-temp-diff hidden></p>
+            </section>
+          </div>
+        </details>
+
+        <details class="form-section" data-section="I">
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">I</span>
+            <span class="form-section__title"><span class="sr-only">Section I: </span>Previous Ulcer / Amputation History</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 10.01h.01" /><path d="M10 14.01h.01" /><path d="M14 10.01h.01" /><path d="M14 14.01h.01" /><path d="M18 6v12" /><path d="M6 6v12" /><rect x="2" y="6" width="20" height="12" rx="2" /></svg>Ulcer history</h3>
+              <p class="field-hint">Pre-filled from the record. Date and level are captured when an event is first recorded.</p>
+              <div class="foot-grid">
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Left foot</legend>
+                  <fieldset class="q" data-required="radio" data-error="Answer previous ulcer, left foot.">
+                    <legend class="label">Previous ulcer</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="i.left.ulcer" value="yes" /><span>Yes</span></label>
+                      <label class="chip"><input type="radio" name="i.left.ulcer" value="no" /><span>No</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                </fieldset>
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Right foot</legend>
+                  <fieldset class="q" data-required="radio" data-error="Answer previous ulcer, right foot.">
+                    <legend class="label">Previous ulcer</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="i.right.ulcer" value="yes" /><span>Yes</span></label>
+                      <label class="chip"><input type="radio" name="i.right.ulcer" value="no" /><span>No</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                </fieldset>
+              </div>
+            </section>
+
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l4 2" /></svg>Amputation history</h3>
+              <div class="foot-grid">
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Left foot</legend>
+                  <fieldset class="q" data-required="radio" data-error="Answer previous minor amputation, left foot.">
+                    <legend class="label">Minor (digital / ray / transmetatarsal)</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="i.left.minor" value="yes" /><span>Yes</span></label>
+                      <label class="chip"><input type="radio" name="i.left.minor" value="no" /><span>No</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="reveal" data-reveal="left-minor" hidden>
+                    <fieldset class="q" data-required="radio" data-error="Choose the amputation level.">
+                      <legend class="label">Level</legend>
+                      <div class="chips">
+                        <label class="chip"><input type="radio" name="i.left.minorLevel" value="digital" /><span>Digital</span></label>
+                        <label class="chip"><input type="radio" name="i.left.minorLevel" value="ray" /><span>Ray</span></label>
+                        <label class="chip"><input type="radio" name="i.left.minorLevel" value="transmetatarsal" /><span>Transmetatarsal</span></label>
+                      </div>
+                      <p class="field-error" hidden>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                        <span></span>
+                      </p>
+                    </fieldset>
+                  </div>
+                  <fieldset class="q" data-required="radio" data-error="Answer previous hindfoot amputation, left foot.">
+                    <legend class="label">Hindfoot / tarsal</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="i.left.hindfoot" value="yes" /><span>Yes</span></label>
+                      <label class="chip"><input type="radio" name="i.left.hindfoot" value="no" /><span>No</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <fieldset class="q" data-required="radio" data-error="Answer previous major amputation, left foot.">
+                    <legend class="label">Major (below / through / above knee)</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="i.left.major" value="yes" /><span>Yes</span></label>
+                      <label class="chip"><input type="radio" name="i.left.major" value="no" /><span>No</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="reveal" data-reveal="left-major" hidden>
+                    <fieldset class="q" data-required="radio" data-error="Choose the amputation level.">
+                      <legend class="label">Level</legend>
+                      <div class="chips">
+                        <label class="chip"><input type="radio" name="i.left.majorLevel" value="below-knee" /><span>Below knee</span></label>
+                        <label class="chip"><input type="radio" name="i.left.majorLevel" value="through-knee" /><span>Through knee</span></label>
+                        <label class="chip"><input type="radio" name="i.left.majorLevel" value="above-knee" /><span>Above knee</span></label>
+                      </div>
+                      <p class="field-error" hidden>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                        <span></span>
+                      </p>
+                    </fieldset>
+                  </div>
+                </fieldset>
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Right foot</legend>
+                  <fieldset class="q" data-required="radio" data-error="Answer previous minor amputation, right foot.">
+                    <legend class="label">Minor (digital / ray / transmetatarsal)</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="i.right.minor" value="yes" /><span>Yes</span></label>
+                      <label class="chip"><input type="radio" name="i.right.minor" value="no" /><span>No</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="reveal" data-reveal="right-minor" hidden>
+                    <fieldset class="q" data-required="radio" data-error="Choose the amputation level.">
+                      <legend class="label">Level</legend>
+                      <div class="chips">
+                        <label class="chip"><input type="radio" name="i.right.minorLevel" value="digital" /><span>Digital</span></label>
+                        <label class="chip"><input type="radio" name="i.right.minorLevel" value="ray" /><span>Ray</span></label>
+                        <label class="chip"><input type="radio" name="i.right.minorLevel" value="transmetatarsal" /><span>Transmetatarsal</span></label>
+                      </div>
+                      <p class="field-error" hidden>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                        <span></span>
+                      </p>
+                    </fieldset>
+                  </div>
+                  <fieldset class="q" data-required="radio" data-error="Answer previous hindfoot amputation, right foot.">
+                    <legend class="label">Hindfoot / tarsal</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="i.right.hindfoot" value="yes" /><span>Yes</span></label>
+                      <label class="chip"><input type="radio" name="i.right.hindfoot" value="no" /><span>No</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <fieldset class="q" data-required="radio" data-error="Answer previous major amputation, right foot.">
+                    <legend class="label">Major (below / through / above knee)</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="i.right.major" value="yes" /><span>Yes</span></label>
+                      <label class="chip"><input type="radio" name="i.right.major" value="no" /><span>No</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="reveal" data-reveal="right-major" hidden>
+                    <fieldset class="q" data-required="radio" data-error="Choose the amputation level.">
+                      <legend class="label">Level</legend>
+                      <div class="chips">
+                        <label class="chip"><input type="radio" name="i.right.majorLevel" value="below-knee" /><span>Below knee</span></label>
+                        <label class="chip"><input type="radio" name="i.right.majorLevel" value="through-knee" /><span>Through knee</span></label>
+                        <label class="chip"><input type="radio" name="i.right.majorLevel" value="above-knee" /><span>Above knee</span></label>
+                      </div>
+                      <p class="field-error" hidden>
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                        <span></span>
+                      </p>
+                    </fieldset>
+                  </div>
+                </fieldset>
+              </div>
+            </section>
+          </div>
+        </details>
+
+        <details class="form-section" data-section="J">
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">J</span>
+            <span class="form-section__title"><span class="sr-only">Section J: </span>Wounds</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" x2="20" y1="9" y2="9" /><line x1="4" x2="20" y1="15" y2="15" /><line x1="10" x2="8" y1="3" y2="21" /><line x1="16" x2="14" y1="3" y2="21" /></svg>Ulcer count</h3>
+              <fieldset class="q" data-required="radio" data-error="Choose the number of ulcers.">
+                <legend class="label">Number of ulcers present</legend>
+                <div class="chips">
+                  <label class="chip"><input type="radio" name="j.count" value="0" /><span>0</span></label>
+                  <label class="chip"><input type="radio" name="j.count" value="1" /><span>1</span></label>
+                  <label class="chip"><input type="radio" name="j.count" value="2" /><span>2</span></label>
+                  <label class="chip"><input type="radio" name="j.count" value="3+" /><span>3 or more</span></label>
+                </div>
+                <p class="field-error" hidden>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                  <span></span>
+                </p>
+              </fieldset>
+              <div class="callout callout-warning" data-alert="ulcer" hidden>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg>
+                <div><strong>Practitioner hands-on evaluation required</strong><p>Record where each ulcer is. Size and infection status are assessed by the practitioner.</p></div>
+              </div>
+            </section>
+
+            <section class="subsection" data-reveal="ulcers" hidden>
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /><circle cx="12" cy="10" r="3" /></svg>Ulcer locations</h3>
+              <p class="field-hint" data-reveal="ulcer-many" hidden>3 or more: record the three most significant ulcers.</p>
+              <div class="ulcer-map" data-ulcer-map>
+                <div class="ulcer-map__toolbar">
+                  <span class="label">Placing</span>
+                  <div class="chips">
+                <label class="chip" data-ulcer-pick="1"><input type="radio" name="_place" value="1" checked /><span>Ulcer 1</span></label>
+                <label class="chip" data-ulcer-pick="2"><input type="radio" name="_place" value="2" /><span>Ulcer 2</span></label>
+                <label class="chip" data-ulcer-pick="3"><input type="radio" name="_place" value="3" /><span>Ulcer 3</span></label>
+                  </div>
+                </div>
+                <p class="field-hint">Tap a toe, metatarsal head, midfoot or heel to place the selected ulcer. You can also choose below.</p>
+                <div class="ulcer-map__views">
+                  <div class="ulcer-map__view">
+                    <p class="ulcer-map__view-title">Plantar (sole)</p>
+                    <div class="ulcer-map__feet">
+                      <figure class="ulcer-map__foot">
+                        <svg class="foot-map__svg" viewBox="0 0 100 220" data-side="left" data-view="plantar" aria-hidden="true">
+                          <g transform="translate(100 0) scale(-1 1)">
+                            <path class="foot-outline" d="M22,48 C18,62 18,80 22,95 C26,115 30,135 30,155 C30,175 28,190 34,203 C40,214 62,214 68,203 C74,190 72,172 74,150 C76,128 86,108 90,88 C94,70 92,56 86,50 C72,44 36,42 22,48 Z" />
+                            <ellipse class="foot-zone" data-zone="hallux" cx="30" cy="28" rx="11" ry="14"><title>Hallux</title></ellipse>
+                            <ellipse class="foot-zone" data-zone="toe2" cx="50" cy="20" rx="7" ry="9"><title>2nd toe</title></ellipse>
+                            <ellipse class="foot-zone" data-zone="toe3" cx="63" cy="24" rx="6.5" ry="8.5"><title>3rd toe</title></ellipse>
+                            <ellipse class="foot-zone" data-zone="toe4" cx="74" cy="31" rx="6" ry="8"><title>4th toe</title></ellipse>
+                            <ellipse class="foot-zone" data-zone="toe5" cx="83" cy="41" rx="5.5" ry="7"><title>5th toe</title></ellipse>
+                            <circle class="foot-zone" data-zone="mth1" cx="32" cy="66" r="9"><title>1st metatarsal head</title></circle>
+                            <circle class="foot-zone" data-zone="mth2" cx="50" cy="62" r="6.5"><title>2nd metatarsal head</title></circle>
+                            <circle class="foot-zone" data-zone="mth3" cx="62.5" cy="64" r="5.5"><title>3rd metatarsal head</title></circle>
+                            <circle class="foot-zone" data-zone="mth4" cx="73.5" cy="68.5" r="5.5"><title>4th metatarsal head</title></circle>
+                            <circle class="foot-zone" data-zone="mth5" cx="82.5" cy="75" r="5.5"><title>5th metatarsal head</title></circle>
+                            <ellipse class="foot-zone" data-zone="midfoot" cx="58" cy="125" rx="18" ry="26"><title>Midfoot</title></ellipse>
+                            <ellipse class="foot-zone" data-zone="heel" cx="51" cy="188" rx="16" ry="17"><title>Heel</title></ellipse>
+                          </g>
+                          <g class="pin-layer" data-pins></g>
+                        </svg>
+                        <figcaption>Left foot</figcaption>
+                      </figure>
+                      <figure class="ulcer-map__foot">
+                        <svg class="foot-map__svg" viewBox="0 0 100 220" data-side="right" data-view="plantar" aria-hidden="true">
+                          <g>
+                            <path class="foot-outline" d="M22,48 C18,62 18,80 22,95 C26,115 30,135 30,155 C30,175 28,190 34,203 C40,214 62,214 68,203 C74,190 72,172 74,150 C76,128 86,108 90,88 C94,70 92,56 86,50 C72,44 36,42 22,48 Z" />
+                            <ellipse class="foot-zone" data-zone="hallux" cx="30" cy="28" rx="11" ry="14"><title>Hallux</title></ellipse>
+                            <ellipse class="foot-zone" data-zone="toe2" cx="50" cy="20" rx="7" ry="9"><title>2nd toe</title></ellipse>
+                            <ellipse class="foot-zone" data-zone="toe3" cx="63" cy="24" rx="6.5" ry="8.5"><title>3rd toe</title></ellipse>
+                            <ellipse class="foot-zone" data-zone="toe4" cx="74" cy="31" rx="6" ry="8"><title>4th toe</title></ellipse>
+                            <ellipse class="foot-zone" data-zone="toe5" cx="83" cy="41" rx="5.5" ry="7"><title>5th toe</title></ellipse>
+                            <circle class="foot-zone" data-zone="mth1" cx="32" cy="66" r="9"><title>1st metatarsal head</title></circle>
+                            <circle class="foot-zone" data-zone="mth2" cx="50" cy="62" r="6.5"><title>2nd metatarsal head</title></circle>
+                            <circle class="foot-zone" data-zone="mth3" cx="62.5" cy="64" r="5.5"><title>3rd metatarsal head</title></circle>
+                            <circle class="foot-zone" data-zone="mth4" cx="73.5" cy="68.5" r="5.5"><title>4th metatarsal head</title></circle>
+                            <circle class="foot-zone" data-zone="mth5" cx="82.5" cy="75" r="5.5"><title>5th metatarsal head</title></circle>
+                            <ellipse class="foot-zone" data-zone="midfoot" cx="58" cy="125" rx="18" ry="26"><title>Midfoot</title></ellipse>
+                            <ellipse class="foot-zone" data-zone="heel" cx="51" cy="188" rx="16" ry="17"><title>Heel</title></ellipse>
+                          </g>
+                          <g class="pin-layer" data-pins></g>
+                        </svg>
+                        <figcaption>Right foot</figcaption>
+                      </figure>
+                    </div>
+                  </div>
+                  <div class="ulcer-map__view">
+                    <p class="ulcer-map__view-title">Dorsal (top)</p>
+                    <div class="ulcer-map__feet">
+                      <figure class="ulcer-map__foot">
+                        <svg class="foot-map__svg" viewBox="0 0 100 220" data-side="left" data-view="dorsal" aria-hidden="true">
+                          <g transform="translate(100 0) scale(-1 1)">
+                            <path class="foot-outline" d="M22,48 C18,62 18,80 22,95 C26,115 30,135 30,155 C30,175 28,190 34,203 C40,214 62,214 68,203 C74,190 72,172 74,150 C76,128 86,108 90,88 C94,70 92,56 86,50 C72,44 36,42 22,48 Z" />
+                            <ellipse class="foot-zone" data-zone="hallux" cx="30" cy="28" rx="11" ry="14"><title>Hallux</title></ellipse>
+                            <ellipse class="foot-nail" cx="30" cy="23.1" rx="6.1" ry="5.6" />
+                            <ellipse class="foot-zone" data-zone="toe2" cx="50" cy="20" rx="7" ry="9"><title>2nd toe</title></ellipse>
+                            <ellipse class="foot-nail" cx="50" cy="16.9" rx="3.9" ry="3.6" />
+                            <ellipse class="foot-zone" data-zone="toe3" cx="63" cy="24" rx="6.5" ry="8.5"><title>3rd toe</title></ellipse>
+                            <ellipse class="foot-nail" cx="63" cy="21.0" rx="3.6" ry="3.4" />
+                            <ellipse class="foot-zone" data-zone="toe4" cx="74" cy="31" rx="6" ry="8"><title>4th toe</title></ellipse>
+                            <ellipse class="foot-nail" cx="74" cy="28.2" rx="3.3" ry="3.2" />
+                            <ellipse class="foot-zone" data-zone="toe5" cx="83" cy="41" rx="5.5" ry="7"><title>5th toe</title></ellipse>
+                            <ellipse class="foot-nail" cx="83" cy="38.5" rx="3.0" ry="2.8" />
+                            <circle class="foot-zone" data-zone="mth1" cx="32" cy="66" r="9"><title>1st metatarsal head</title></circle>
+                            <circle class="foot-zone" data-zone="mth2" cx="50" cy="62" r="6.5"><title>2nd metatarsal head</title></circle>
+                            <circle class="foot-zone" data-zone="mth3" cx="62.5" cy="64" r="5.5"><title>3rd metatarsal head</title></circle>
+                            <circle class="foot-zone" data-zone="mth4" cx="73.5" cy="68.5" r="5.5"><title>4th metatarsal head</title></circle>
+                            <circle class="foot-zone" data-zone="mth5" cx="82.5" cy="75" r="5.5"><title>5th metatarsal head</title></circle>
+                            <ellipse class="foot-zone" data-zone="midfoot" cx="58" cy="125" rx="18" ry="26"><title>Midfoot</title></ellipse>
+                          </g>
+                          <g class="pin-layer" data-pins></g>
+                        </svg>
+                        <figcaption>Left foot</figcaption>
+                      </figure>
+                      <figure class="ulcer-map__foot">
+                        <svg class="foot-map__svg" viewBox="0 0 100 220" data-side="right" data-view="dorsal" aria-hidden="true">
+                          <g>
+                            <path class="foot-outline" d="M22,48 C18,62 18,80 22,95 C26,115 30,135 30,155 C30,175 28,190 34,203 C40,214 62,214 68,203 C74,190 72,172 74,150 C76,128 86,108 90,88 C94,70 92,56 86,50 C72,44 36,42 22,48 Z" />
+                            <ellipse class="foot-zone" data-zone="hallux" cx="30" cy="28" rx="11" ry="14"><title>Hallux</title></ellipse>
+                            <ellipse class="foot-nail" cx="30" cy="23.1" rx="6.1" ry="5.6" />
+                            <ellipse class="foot-zone" data-zone="toe2" cx="50" cy="20" rx="7" ry="9"><title>2nd toe</title></ellipse>
+                            <ellipse class="foot-nail" cx="50" cy="16.9" rx="3.9" ry="3.6" />
+                            <ellipse class="foot-zone" data-zone="toe3" cx="63" cy="24" rx="6.5" ry="8.5"><title>3rd toe</title></ellipse>
+                            <ellipse class="foot-nail" cx="63" cy="21.0" rx="3.6" ry="3.4" />
+                            <ellipse class="foot-zone" data-zone="toe4" cx="74" cy="31" rx="6" ry="8"><title>4th toe</title></ellipse>
+                            <ellipse class="foot-nail" cx="74" cy="28.2" rx="3.3" ry="3.2" />
+                            <ellipse class="foot-zone" data-zone="toe5" cx="83" cy="41" rx="5.5" ry="7"><title>5th toe</title></ellipse>
+                            <ellipse class="foot-nail" cx="83" cy="38.5" rx="3.0" ry="2.8" />
+                            <circle class="foot-zone" data-zone="mth1" cx="32" cy="66" r="9"><title>1st metatarsal head</title></circle>
+                            <circle class="foot-zone" data-zone="mth2" cx="50" cy="62" r="6.5"><title>2nd metatarsal head</title></circle>
+                            <circle class="foot-zone" data-zone="mth3" cx="62.5" cy="64" r="5.5"><title>3rd metatarsal head</title></circle>
+                            <circle class="foot-zone" data-zone="mth4" cx="73.5" cy="68.5" r="5.5"><title>4th metatarsal head</title></circle>
+                            <circle class="foot-zone" data-zone="mth5" cx="82.5" cy="75" r="5.5"><title>5th metatarsal head</title></circle>
+                            <ellipse class="foot-zone" data-zone="midfoot" cx="58" cy="125" rx="18" ry="26"><title>Midfoot</title></ellipse>
+                          </g>
+                          <g class="pin-layer" data-pins></g>
+                        </svg>
+                        <figcaption>Right foot</figcaption>
+                      </figure>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="ulcer-grid">
+                <fieldset class="ulcer-card" data-ulcer="1" hidden>
+                  <legend class="foot-card__title">Ulcer 1</legend>
+                  <fieldset class="q" data-required="radio" data-error="Choose the foot.">
+                    <legend class="label">Foot</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="j.1.foot" value="left" /><span>Left</span></label>
+                      <label class="chip"><input type="radio" name="j.1.foot" value="right" /><span>Right</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="q" data-required="value" data-error="Choose the zone.">
+                    <label class="label" for="f-j-1-zone">Zone</label>
+                    <select class="input select" id="f-j-1-zone" name="j.1.zone">
+                      <option value="">Choose…</option>
+                      <option value="hallux">Hallux</option>
+                      <option value="toe2">2nd toe</option>
+                      <option value="toe3">3rd toe</option>
+                      <option value="toe4">4th toe</option>
+                      <option value="toe5">5th toe</option>
+                      <option value="mth1">1st metatarsal head</option>
+                      <option value="mth2">2nd metatarsal head</option>
+                      <option value="mth3">3rd metatarsal head</option>
+                      <option value="mth4">4th metatarsal head</option>
+                      <option value="mth5">5th metatarsal head</option>
+                      <option value="midfoot">Midfoot</option>
+                      <option value="heel">Heel</option>
+                    </select>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </div>
+                  <fieldset class="q" data-required="radio" data-error="Choose the aspect.">
+                    <legend class="label">Aspect</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="j.1.aspect" value="dorsal" /><span>Dorsal</span></label>
+                      <label class="chip"><input type="radio" name="j.1.aspect" value="plantar" /><span>Plantar</span></label>
+                      <label class="chip"><input type="radio" name="j.1.aspect" value="medial" /><span>Medial</span></label>
+                      <label class="chip"><input type="radio" name="j.1.aspect" value="lateral" /><span>Lateral</span></label>
+                      <label class="chip"><input type="radio" name="j.1.aspect" value="apex" /><span>Apex</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="q">
+                    <label class="label" for="f-j-1-photo">Photo <span class="label__optional">(optional)</span></label>
+                    <input class="file-input" id="f-j-1-photo" name="j.1.photo" type="file" accept="image/*" capture="environment" />
+                  </div>
+                </fieldset>
+                <fieldset class="ulcer-card" data-ulcer="2" hidden>
+                  <legend class="foot-card__title">Ulcer 2</legend>
+                  <fieldset class="q" data-required="radio" data-error="Choose the foot.">
+                    <legend class="label">Foot</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="j.2.foot" value="left" /><span>Left</span></label>
+                      <label class="chip"><input type="radio" name="j.2.foot" value="right" /><span>Right</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="q" data-required="value" data-error="Choose the zone.">
+                    <label class="label" for="f-j-2-zone">Zone</label>
+                    <select class="input select" id="f-j-2-zone" name="j.2.zone">
+                      <option value="">Choose…</option>
+                      <option value="hallux">Hallux</option>
+                      <option value="toe2">2nd toe</option>
+                      <option value="toe3">3rd toe</option>
+                      <option value="toe4">4th toe</option>
+                      <option value="toe5">5th toe</option>
+                      <option value="mth1">1st metatarsal head</option>
+                      <option value="mth2">2nd metatarsal head</option>
+                      <option value="mth3">3rd metatarsal head</option>
+                      <option value="mth4">4th metatarsal head</option>
+                      <option value="mth5">5th metatarsal head</option>
+                      <option value="midfoot">Midfoot</option>
+                      <option value="heel">Heel</option>
+                    </select>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </div>
+                  <fieldset class="q" data-required="radio" data-error="Choose the aspect.">
+                    <legend class="label">Aspect</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="j.2.aspect" value="dorsal" /><span>Dorsal</span></label>
+                      <label class="chip"><input type="radio" name="j.2.aspect" value="plantar" /><span>Plantar</span></label>
+                      <label class="chip"><input type="radio" name="j.2.aspect" value="medial" /><span>Medial</span></label>
+                      <label class="chip"><input type="radio" name="j.2.aspect" value="lateral" /><span>Lateral</span></label>
+                      <label class="chip"><input type="radio" name="j.2.aspect" value="apex" /><span>Apex</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="q">
+                    <label class="label" for="f-j-2-photo">Photo <span class="label__optional">(optional)</span></label>
+                    <input class="file-input" id="f-j-2-photo" name="j.2.photo" type="file" accept="image/*" capture="environment" />
+                  </div>
+                </fieldset>
+                <fieldset class="ulcer-card" data-ulcer="3" hidden>
+                  <legend class="foot-card__title">Ulcer 3</legend>
+                  <fieldset class="q" data-required="radio" data-error="Choose the foot.">
+                    <legend class="label">Foot</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="j.3.foot" value="left" /><span>Left</span></label>
+                      <label class="chip"><input type="radio" name="j.3.foot" value="right" /><span>Right</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="q" data-required="value" data-error="Choose the zone.">
+                    <label class="label" for="f-j-3-zone">Zone</label>
+                    <select class="input select" id="f-j-3-zone" name="j.3.zone">
+                      <option value="">Choose…</option>
+                      <option value="hallux">Hallux</option>
+                      <option value="toe2">2nd toe</option>
+                      <option value="toe3">3rd toe</option>
+                      <option value="toe4">4th toe</option>
+                      <option value="toe5">5th toe</option>
+                      <option value="mth1">1st metatarsal head</option>
+                      <option value="mth2">2nd metatarsal head</option>
+                      <option value="mth3">3rd metatarsal head</option>
+                      <option value="mth4">4th metatarsal head</option>
+                      <option value="mth5">5th metatarsal head</option>
+                      <option value="midfoot">Midfoot</option>
+                      <option value="heel">Heel</option>
+                    </select>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </div>
+                  <fieldset class="q" data-required="radio" data-error="Choose the aspect.">
+                    <legend class="label">Aspect</legend>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="j.3.aspect" value="dorsal" /><span>Dorsal</span></label>
+                      <label class="chip"><input type="radio" name="j.3.aspect" value="plantar" /><span>Plantar</span></label>
+                      <label class="chip"><input type="radio" name="j.3.aspect" value="medial" /><span>Medial</span></label>
+                      <label class="chip"><input type="radio" name="j.3.aspect" value="lateral" /><span>Lateral</span></label>
+                      <label class="chip"><input type="radio" name="j.3.aspect" value="apex" /><span>Apex</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
+                  <div class="q">
+                    <label class="label" for="f-j-3-photo">Photo <span class="label__optional">(optional)</span></label>
+                    <input class="file-input" id="f-j-3-photo" name="j.3.photo" type="file" accept="image/*" capture="environment" />
+                  </div>
+                </fieldset>
+              </div>
+            </section>
+          </div>
+        </details>
+
+        <div class="form-actions">
+          <p class="form-actions__progress" id="screening-progress" aria-live="polite"></p>
+          <button type="submit" class="btn btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" /><path d="m21.854 2.147-10.94 10.939" /></svg>
+            Send to practitioner
+          </button>
+        </div>
+      </form>
+
+      <!-- Shown after sending -->
+      <section class="empty-state" id="screening-sent" aria-labelledby="screening-sent-title" hidden tabindex="-1">
+        <div class="empty-state__icon empty-state__icon--success">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+        </div>
+        <h2 class="empty-state__title" id="screening-sent-title">Sent to practitioner</h2>
+        <p class="empty-state__text" id="screening-sent-text"></p>
+        <ul class="flag-list" id="screening-sent-flags"></ul>
+        <div class="modal__actions">
+          <a class="btn btn-outline" href="./diabetic-foot.html">Back to Diabetic Foot</a>
+          <a class="btn btn-primary" id="screening-review-link" href="./review.html">Open practitioner review</a>
+        </div>
+      </section>
+    </main>
+
+    <!-- Confirm before sending -->
+    <dialog class="modal" id="confirm-send" aria-labelledby="confirm-send-title">
+      <form class="modal__inner" method="dialog">
+        <div>
+          <h2 class="modal__title" id="confirm-send-title">Send screening to practitioner?</h2>
+          <p class="modal__description" id="confirm-send-text"></p>
+        </div>
+        <ul class="flag-list" id="confirm-send-flags"></ul>
+        <div class="modal__actions">
+          <button type="submit" class="btn btn-outline" value="cancel">Keep editing</button>
+          <button type="submit" class="btn btn-primary" value="send">Send</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="./scripts/user-menu.js"></script>
+    <script src="./scripts/patients.js"></script>
+    <script src="./scripts/screening-store.js"></script>
+    <script src="./scripts/screening.js"></script>
+    <script src="./scripts/foot-map.js"></script>
+  </body>
+</html>

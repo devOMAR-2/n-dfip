@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="./styles/shared.css" />
+    <script src="./scripts/auth.js"></script>
+    <script>
+      // Not signed in: back to the sign-in page
+      if (!Auth.getSessionId()) window.location.replace(Auth.LOGIN_PAGE);
+    </script>
+  </head>
+  <body>
+    <header class="app-header">
+      <a class="app-title" href="./home.html">The Clinical Platform</a>
+
+      <nav class="app-nav" aria-label="Main">
+        <a href="./home.html">Home</a>
+        <a href="./dashboard.html" aria-current="page">Dashboard</a>
+        <a href="./settings.html">Settings</a>
+      </nav>
+
+      <div class="user-menu">
+        <button
+          type="button"
+          class="avatar-button"
+          id="user-menu-button"
+          aria-haspopup="menu"
+          aria-expanded="false"
+          aria-controls="user-menu"
+          aria-label="Open user menu"
+        >
+          <span id="user-initials">?</span>
+        </button>
+
+        <div class="menu" id="user-menu" role="menu" aria-labelledby="user-menu-button" hidden>
+          <button type="button" class="menu-item" role="menuitem" data-action="account">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+            Account
+          </button>
+          <button type="button" class="menu-item" role="menuitem" data-action="settings">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
+            Settings
+          </button>
+          <hr class="menu-separator" role="separator" />
+          <button type="button" class="menu-item menu-item--destructive" role="menuitem" data-action="logout">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></svg>
+            Log out
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-content">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="./home.html">Home</a>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">Dashboard</span>
+      </nav>
+
+      <div class="page-header">
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle">Diabetic Foot clinic · Demo data, generated for illustration</p>
+      </div>
+
+      <section class="page-section" id="dash-landing" aria-labelledby="dashboards-title">
+        <h2 class="sr-only" id="dashboards-title">Dashboards</h2>
+        <p class="field-hint" id="preview-range"></p>
+        <div class="dash-links">
+          <a class="module-card dash-link" href="./dashboard-operations.html">
+            <div class="module-card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v16a2 2 0 0 0 2 2h16" /><path d="M7 16h8" /><path d="M7 11h12" /><path d="M7 6h3" /></svg></div>
+            <h3 class="module-card__title">Operations dashboard</h3>
+            <p class="module-card__excerpt">Workload, waiting times, pathway completion and documentation effort.</p>
+            <div class="kpi-grid kpi-grid--compact" id="preview-ops"></div>
+            <span class="module-card__cta">Open dashboard <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg></span>
+          </a>
+          <a class="module-card dash-link" href="./dashboard-clinical.html">
+            <div class="module-card__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /><path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27" /></svg></div>
+            <h3 class="module-card__title">Clinical dashboard</h3>
+            <p class="module-card__excerpt">Foot risk, ulcers and infection, limb outcomes and diabetes control.</p>
+            <div class="kpi-grid kpi-grid--compact" id="preview-clin"></div>
+            <span class="module-card__cta">Open dashboard <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg></span>
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <script src="./scripts/user-menu.js"></script>
+    <script src="./scripts/screening-store.js"></script>
+    <script src="./scripts/dashboard-data.js"></script>
+    <script src="./scripts/charts.js"></script>
+    <script src="./scripts/dashboard.js"></script>
+  </body>
+</html>
