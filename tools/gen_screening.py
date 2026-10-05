@@ -2,7 +2,14 @@
 # Run from anywhere: python tools/gen_screening.py
 import json
 from formkit import *  # noqa: F401,F403
-from formkit import SCHEMA, ROOT
+from formkit import SCHEMA, ROOT, SUB_ICONS
+
+# Handbook section 4 additions
+SUB_ICONS.update({
+    "General condition": SUB_ICONS["Patient details"],
+    "Medications & allergies": '<path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" /><path d="m8.5 8.5 7 7" />',
+    "Claudication & rest pain": SUB_ICONS["Claudication"],
+})
 
 src = open(ROOT + 'screening.html', encoding='utf-8').read()
 head_and_header = src[:src.index('    <main class="page-content')]
@@ -27,11 +34,18 @@ a_body = '\n\n'.join([
 {ind(q_number("Temperature", "a.temp", "°C", min_=30, max_=45, step="0.1", error="Enter a temperature between 30 and 45 °C."), 2)}
 {ind(q_number("Heart rate", "a.hr", "bpm", min_=20, max_=250, step="1", error="Enter a heart rate between 20 and 250 bpm."), 2)}
 {ind(q_number("Respiratory rate", "a.rr", "/min", min_=4, max_=60, step="1", error="Enter a respiratory rate between 4 and 60 /min."), 2)}
+{ind(q_number("Systolic blood pressure", "a.sbp", "mmHg", min_=50, max_=260, step="1", error="Enter a systolic pressure between 50 and 260 mmHg."), 2)}
+{ind(q_number("Capillary glucose", "a.glucose", "mg/dL", required=False, min_=20, max_=600, step="1"), 2)}
 </div>
 <div class="callout callout-danger" data-alert="sirs" hidden>
   {WARN_SVG}
   <div><strong>2 or more SIRS signs</strong><p>Possible systemic infection (temperature &gt; 38 or &lt; 36 °C, HR &gt; 90, RR &gt; 20). The practitioner will be alerted when you send.</p></div>
 </div>'''),
+    sub("General condition", '\n'.join([
+        q_choice("General appearance", "a.appearance", [("well", "Well"), ("unwell", "Unwell")], error="Record how the patient looks."),
+        q_choice("Mobility", "a.mobility", [("independent", "Independent"), ("walking-aid", "Walking aid"), ("wheelchair", "Wheelchair")], error="Record the patient's mobility."),
+        q_choice("Social support", "a.support", [("family-carer", "Family or carer"), ("lives-alone", "Lives alone")], required=False),
+    ])),
     sub("Encounter", f'''{q_choice("Reason for screening", "a.reason", [("annual-review", "Annual review"), ("new-diagnosis", "New diagnosis"), ("foot-problem", "Foot problem")], error="Choose the reason for screening.")}
 <div class="q">
   <label class="label" for="f-a-complaint">Current complaint <span class="label__optional">(optional)</span></label>
@@ -44,8 +58,12 @@ begin("B")
 b_body = '\n\n'.join([
     sub("Conditions", f'''<p class="field-hint">Pre-filled from the record. Update anything that has changed.</p>
 {q_choice("Risk history", "b.history", [
-    ("ckd", "CKD / dialysis"),
+    ("ckd", "Chronic kidney disease"),
+    ("dialysis", "Dialysis or end-stage renal disease"),
+    ("previous-charcot", "Previous Charcot foot"),
     ("cardiovascular", "Cardiovascular disease"),
+    ("hypertension", "Hypertension"),
+    ("dyslipidaemia", "Dyslipidaemia"),
     ("retinopathy", "Retinopathy"),
     ("immunosuppression", "Immunosuppression"),
     ("pad", "PAD / revascularisation"),
@@ -53,6 +71,10 @@ b_body = '\n\n'.join([
     ("poor-vision", "Poor vision / self-care limitation"),
 ], kind="checkbox", required=False)}'''),
     sub("Smoking", q_choice("Smoking status", "b.smoking", [("never", "Never"), ("former", "Former"), ("current", "Current")], required=False)),
+    sub("Medications & allergies", '\n'.join([
+        q_choice("Current medications", "b.meds", [("insulin", "Insulin"), ("oral", "Oral agents"), ("antiplatelet", "Antiplatelet"), ("statin", "Statin"), ("anticoagulant", "Anticoagulant"), ("antibiotics", "Antibiotics now"), ("none", "None")], kind="checkbox", exclusive="none", error="Record the current medications, or None."),
+        q_choice("Antibiotic allergy", "b.allergy", [("none", "None known"), ("beta-lactam", "Beta-lactam (penicillin, cephalosporin)"), ("other", "Other")], error="Record any antibiotic allergy."),
+    ])),
 ])
 
 # ---------- C ----------
@@ -122,10 +144,9 @@ def d_doppler(side, label):
 
 def d_skin(side, label):
     return '\n'.join([
-        '<!-- assumed: option list not in spec -->',
-        q_choice("Skin colour, temperature, oedema", f'd.{side}.skin', [
-            ("pallor", "Pallor"), ("rubor", "Rubor"), ("cyanosis", "Cyanosis"), ("cool", "Cool foot"),
-            ("gradient", "Temperature gradient"), ("oedema", "Oedema"), ("none", "None"),
+        q_choice("Skin signs", f'd.{side}.skin', [
+            ("pallor", "Pallor"), ("dusky", "Dusky"), ("cool", "Cool to touch"), ("oedema", "Oedema"),
+            ("hair-loss", "Hair loss"), ("atrophic", "Atrophic skin"), ("none", "None"),
         ], kind="checkbox", required=False, exclusive="none"),
         q_choice("Venous / trophic changes", f'd.{side}.venous', [
             ("sclerosis", "Sclerosis / induration"), ("spider", "Spider veins"), ("varicose", "Varicose veins"),
@@ -136,7 +157,10 @@ def d_skin(side, label):
 
 begin("D")
 d_body = '\n\n'.join([
-    sub("Claudication", q_choice("History of intermittent claudication", "d.claudication", YN, error="Answer the claudication question.")),
+    sub("Claudication & rest pain", '\n'.join([
+        q_choice("History of intermittent claudication", "d.claudication", YN, error="Answer the claudication question."),
+        q_choice("Rest pain", "d.restpain", YN, error="Answer the rest pain question.", hint="Pain in the foot at rest, often at night, eased by hanging the leg down."),
+    ])),
     sub("Pulses", per_foot(d_pulses)),
     sub("Doppler & capillary refill", per_foot(d_doppler)),
     sub("Skin & venous changes", per_foot(d_skin)),
@@ -185,8 +209,8 @@ def f_skin(side, label):
     return '\n'.join([
         '<!-- assumed: option list not in spec -->',
         q_choice("Findings", f'f.{side}.skin', [
-            ("callus", "Callus"), ("dry", "Dry skin"), ("fissures", "Fissures"), ("maceration", "Maceration"),
-            ("blister", "Blister"), ("pre-ulcer", "Pre-ulcerative lesion"), ("none", "None"),
+            ("callus", "Callus"), ("dry", "Dry skin"), ("fissures", "Fissures"), ("maceration", "Interdigital maceration"),
+            ("blister", "Blister"), ("haemorrhage", "Haemorrhage under callus"), ("pre-ulcer", "Pre-ulcerative lesion"), ("none", "None"),
         ], kind="checkbox", required=False, exclusive="none"),
     ])
 
@@ -243,7 +267,7 @@ h_body = '\n\n'.join([
     sub("Red flags", '<p class="field-hint">Always performed, both feet.</p>\n' + per_foot(h_flags) + f'''
 <div class="callout callout-danger" data-alert="charcot" hidden>
   {WARN_SVG}
-  <div><strong>Charcot red flag</strong><p>Sending will alert the practitioner immediately, outside the routine queue.</p></div>
+  <div><strong>Suspected Charcot foot</strong><p>2 or more red flags including warmth, swelling or redness, or a skin temperature difference over 2 °C. Sending alerts the practitioner immediately.</p></div>
 </div>'''),
     sub("Skin temperature", per_foot(h_temp) + '\n<p class="temp-diff" data-temp-diff hidden></p>'),
 ])
@@ -398,6 +422,7 @@ main = f'''    <main class="page-content page-content--with-actions">
     <script src="./scripts/user-menu.js"></script>
     <script src="./scripts/patients.js"></script>
     <script src="./scripts/screening-store.js"></script>
+    <script src="./scripts/clinical-rules.js"></script>
     <script src="./scripts/screening-schema.js"></script>
     <script src="./scripts/review-schema.js"></script>
     <script src="./scripts/layout.js"></script>

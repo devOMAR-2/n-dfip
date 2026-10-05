@@ -70,7 +70,9 @@
   let holding = false;
   const fmtTime = (iso) => new Date(iso).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
   if (!["waiting-screening", "screening"].includes(record.status)) {
-    readOnly = `This screening was sent to the practitioner at ${fmtTime(record.submittedAt)} by ${record.submittedBy}. It can't be edited here.`;
+    readOnly = record.status === "awaiting-review"
+      ? `This screening was sent to the practitioner at ${fmtTime(record.submittedAt)} by ${record.submittedBy}. It can still be changed until a practitioner opens it.`
+      : `This screening was sent to the practitioner at ${fmtTime(record.submittedAt)} by ${record.submittedBy}. A practitioner has opened it, so Part 1 can't be edited here.`;
   } else {
     const lock = ScreeningStore.acquire(encounterId, user);
     if (!lock.ok) {
@@ -121,6 +123,15 @@
 
   const isHidden = (el) => !!el.closest("[hidden]");
 
+  // Current answer by field name, for the shared rules (clinical-rules.js)
+  const answer = (name) => {
+    const fields = inputs(name);
+    if (!fields.length) return undefined;
+    if (fields[0].type === "checkbox") return checkedValues(name);
+    if (fields[0].type === "radio") return radioValue(name) || undefined;
+    return fields[0].value === "" ? undefined : fields[0].value;
+  };
+
   // ---------- Prefill from the patient record ----------
 
   const prefill = {
@@ -141,6 +152,7 @@
     "b.history",
     [
       (h.ckd || h.dialysis) && "ckd",
+      h.dialysis && "dialysis",
       h.cardiovascular && "cardiovascular",
       h.retinopathy && "retinopathy",
       h.immunosuppression && "immunosuppression",
@@ -150,6 +162,9 @@
     ].filter(Boolean),
   );
   if (h.smoking) setRadio("b.smoking", h.smoking);
+  // Antibiotic allergy from the record (handbook section 4)
+  const allergies = patient.allergies ?? [];
+  setRadio("b.allergy", !allergies.length ? "none" : allergies.some((a) => /penicillin|cephalosporin|cef|beta/i.test(a)) ? "beta-lactam" : "other");
 
   for (const side of ["left", "right"]) {
     setRadio(`i.${side}.ulcer`, patient.previousUlcer[side] ? "yes" : "no");
@@ -229,7 +244,8 @@
     alertBox("ulcer", shown > 0);
 
     alertBox("sirs", sirsCount() >= 2);
-    alertBox("charcot", charcotFlags("left").length + charcotFlags("right").length > 0);
+    // Handbook charcotFlag: 2+ red flags including warmth, swelling or redness, or > 2 °C difference
+    alertBox("charcot", ClinicalRules.charcot(answer).flag);
 
     const tl = numberValue("h.left.temp");
     const tr = numberValue("h.right.temp");
@@ -366,15 +382,12 @@
 
   // ---------- Flags for the practitioner ----------
 
+  // Handbook section 8, for the nurse: "Tell the practitioner now", and the Charcot flag
   function buildFlags() {
     const flags = [];
-    const charcot = ["left", "right"].filter((side) => charcotFlags(side).length);
-    if (charcot.length) {
-      flags.push({
-        level: "urgent",
-        text: `Charcot red flag (${charcot.map((s) => s + " foot").join(", ")}): immediate practitioner alert`,
-      });
-    }
+    const rules = ClinicalRules.nurseAlerts(answer);
+    for (const text of rules.now) flags.push({ level: "urgent", text: `Tell the practitioner now: ${text.toLowerCase()}` });
+    if (rules.charcot.length) flags.push({ level: "urgent", text: `Suspected Charcot foot (${rules.charcot.join("; ")}): immediate practitioner alert` });
     if (sirsCount() >= 2) flags.push({ level: "urgent", text: "2 or more SIRS signs: possible systemic infection" });
     const count = radioValue("j.count");
     if (count && count !== "0") {
@@ -527,6 +540,29 @@
       if (!f.closest(".form-section__summary")) f.disabled = true;
     });
     form.querySelector(".form-actions").hidden = true;
+    // Handbook section 9: until a practitioner opens the file, the nurse can still change
+    // Part 1. Doing so returns it to stage 2 and it must be sent again.
+    if (record.status === "awaiting-review" && !ScreeningStore.lockActive(record) && Access.canAny(["screening.editOwn", "screening.pull"])) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "btn btn-outline";
+      b.textContent = "Edit and send again";
+      b.addEventListener("click", () => {
+        const latest = ScreeningStore.getById(encounterId);
+        if (latest?.status !== "awaiting-review" || ScreeningStore.lockActive(latest)) {
+          showNotice("The practitioner has opened this file. Part 1 can't be changed any more.", "error");
+          return;
+        }
+        try {
+          ScreeningStore.save({ ...latest, status: "screening", reopenedForEditAt: new Date().toISOString() });
+          ScreeningStore.audit("Screening reopened by the nurse after sending (back to stage 2)", latest);
+          location.reload();
+        } catch (e) {
+          showNotice(e.message, "error");
+        }
+      });
+      document.getElementById("screening-notice").append(" ", b);
+    }
     if (record.status !== "waiting-screening" && record.status !== "screening" && Access.can("review.queue")) {
       const a = document.createElement("a");
       a.className = "btn btn-primary";

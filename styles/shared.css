@@ -6404,3 +6404,133 @@ a.records-row__name:hover {
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+
+/* ==========================================================================
+   Handbook clinical logic: alerts, MOH segment, wound suggestions, sign-off checklist
+   ========================================================================== */
+
+.alert-item {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.alert-item__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.alert-item__reason,
+.alert-item__action {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 0.8125rem;
+}
+
+.alert-item__action {
+  color: var(--muted-foreground);
+}
+
+.alert-level {
+  font-size: 0.6875rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.alert-level--critical {
+  background: var(--destructive);
+  color: #fff;
+}
+
+.alert-level--warning {
+  background: rgb(201 162 75 / 0.25);
+  color: #6b531c;
+}
+
+.alert-level--info {
+  background: var(--secondary);
+  color: var(--secondary-foreground);
+}
+
+.segment-card {
+  display: grid;
+  gap: 0.375rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+}
+
+.segment-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.segment-card__action {
+  font-weight: 600;
+}
+
+.segment-badge {
+  font-weight: 600;
+}
+
+.segment-badge--0 { background: oklch(50% 0.12 150 / 0.12); color: var(--success); }
+.segment-badge--1 { background: rgb(232 180 190 / 0.4); color: var(--primary-dark); }
+.segment-badge--2 { background: rgb(201 162 75 / 0.25); color: #6b531c; }
+.segment-badge--3 { background: rgb(145 50 70 / 0.16); color: var(--primary-dark); }
+.segment-badge--4 { background: var(--destructive); color: #fff; }
+
+.wound-hints {
+  padding: 0.75rem 0.875rem;
+  border: 1px dashed rgb(145 50 70 / 0.3);
+  border-radius: var(--radius);
+  background: rgb(232 180 190 / 0.12);
+}
+
+.wound-hints:empty {
+  display: none;
+}
+
+.wound-hints__title {
+  margin-bottom: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.team-list {
+  display: grid;
+  gap: 0.375rem;
+  margin: 0;
+  padding-left: 1.25rem;
+  font-size: 0.875rem;
+}
+
+[data-disposition][data-level="emergency"] {
+  border-color: var(--destructive);
+  color: oklch(42% 0.17 27);
+}
+
+.q-row--4 {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 7.5rem), 1fr));
+}
+
+.sign-checklist {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--secondary);
+  font-size: 0.875rem;
+}
+
+.sign-checklist__title {
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+.sign-checklist__list {
+  margin: 0;
+  padding-left: 1.25rem;
+}

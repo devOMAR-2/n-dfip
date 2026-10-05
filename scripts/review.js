@@ -355,6 +355,12 @@
       if (JSON.stringify(to) !== JSON.stringify(current ?? (field.type === "checkbox" ? [] : ""))) {
         review.corrections.push({ field: name, from: current ?? null, to, by: user.name, at: new Date().toISOString(), reason: reason.value.trim() });
         Audit.forRecord("value.edit", record, `Nurse finding corrected: ${name}`, { field: name, old: [].concat(current ?? "—").join(", "), new: [].concat(to ?? "—").join(", "), reason: reason.value.trim() });
+        // Handbook section 9: any change to Part 1 sends the recommendation back to pending
+        if (review.decisions.risk || review.decisions.interval) {
+          delete review.decisions.risk;
+          delete review.decisions.interval;
+          Audit.forRecord("recommendation", record, "Risk category back to pending after a Part 1 correction");
+        }
         commitActions();
       }
       editing = null;
@@ -385,6 +391,7 @@
 
   function woundInput(n) {
     const p = `r.w.${n}`;
+    const share = (k) => rnum(`${p}.share.${k}`);
     return {
       n,
       signs: rv(`${p}.signs`) ?? [],
@@ -396,33 +403,47 @@
       gangrene: rv(`${p}.gangrene`),
       length: rnum(`${p}.length`),
       width: rnum(`${p}.width`),
+      depth: rnum(`${p}.depth`),
       onset: rv(`${p}.onset`),
+      type: rv(`${p}.type`),
+      progression: rv(`${p}.progression`),
+      prevArea: rnum(`${p}.prevArea`),
+      weeksCare: rnum(`${p}.weeksCare`),
+      tissue: rv(`${p}.tissue`) ?? [],
+      shares: { granulation: share("granulation"), slough: share("slough"), necrosis: share("necrosis"), epithelialising: share("epithelialising") },
+      exudateVolume: rv(`${p}.exudate`),
+      exudateType: rv(`${p}.exudateType`),
+      odour: rv(`${p}.odour`),
+      pain: $(`[name="${p}.pain"]`)?.dataset.touched || review.answers?.[`${p}.pain`] !== undefined ? rnum(`${p}.pain`) : null,
+      debridement: rv("r.std.debridement"),
+      offloading: rv("r.std.offloading"),
     };
   }
 
-  function compute() {
-    const labs = { wbc: rnum("r.lab.wbc") };
-    const sirs = R.sirs(nv, labs);
-    const recs = [];
+  const INFECTION_OPTS = [0, 1, 2, 3].map((g) => [g, R.INFECTION[g]]);
 
-    // Neuropathy, PAD, deformity per foot
+  // Handbook sections 5 to 8, through ClinicalRules.evaluate (pure). The practitioner's
+  // decisions (per-foot LOPS / PAD / deformity, per-ulcer labels) feed back in.
+  function compute() {
+    const labs = Object.fromEntries(Object.keys(R.LABS).map((k) => [k, rnum(`r.lab.${k}`)]));
+    const recs = [];
     for (const side of R.SIDES) {
       const L = R.SIDE_LABEL[side];
       recs.push({ id: `lops.${side}`, group: "foot", title: `LOPS · ${L} foot`, sys: R.lops(nv, side), options: YES_NO, fmt: fmtYesNo });
       recs.push({ id: `pad.${side}`, group: "foot", title: `PAD · ${L} foot`, sys: R.pad(nv, side), options: YES_NO, fmt: fmtYesNo });
       recs.push({ id: `deformity.${side}`, group: "foot", title: `Deformity · ${L} foot`, sys: R.deformity(nv, side), options: YES_NO, fmt: fmtYesNo });
     }
+    const dec = (id) => decidedValue(recs.find((r) => r.id === id));
+    const decided = Object.fromEntries(["lops", "pad", "deformity"].map((k) => [k, Object.fromEntries(R.SIDES.map((sd) => [sd, dec(`${k}.${sd}`)]))]));
+
+    // IWGDF category waits for the per-foot decisions (UAT F-12), then is confirmed or overridden
     const footVal = (kind) => {
-      const vals = R.SIDES.map((s) => decidedValue(recs.find((r) => r.id === `${kind}.${s}`)));
+      const vals = R.SIDES.map((sd) => decided[kind][sd]);
       if (vals.includes("yes")) return true;
       return vals.every((v) => v === "no") ? false : null;
     };
-    const lops = footVal("lops");
-    const pad = footVal("pad");
-    const deformity = footVal("deformity");
     const hist = R.history(nv, patient);
-
-    const riskSys = R.iwgdfRisk({ lops, pad, deformity: !!deformity, history: hist });
+    const riskSys = R.iwgdfRisk({ lops: footVal("lops"), pad: footVal("pad") === null ? null : footVal("pad") || hist.padHx, deformity: !!footVal("deformity") || hist.prevCharcot, history: hist });
     const riskRec = {
       id: "risk", group: "risk", title: "IWGDF risk category", sys: riskSys,
       options: [0, 1, 2, 3].map((r) => [r, Patients.RISK[r].label]),
@@ -431,94 +452,40 @@
     recs.push(riskRec);
     const risk = decidedValue(riskRec);
     const intervalSys = risk === null
-      ? { value: null, reasons: ["Decide the risk category first"], source: "MoC Table 1" }
-      : { value: R.RISK_INTERVAL[risk], reasons: [`IWGDF ${risk}`], source: "MoC Table 1" };
+      ? { value: null, reasons: ["Decide the risk category first"], source: "IWGDF (handbook §5 step 5)" }
+      : { value: R.RISK_INTERVAL[risk], reasons: [`IWGDF ${risk}`], source: "IWGDF (handbook §5 step 5)" };
     recs.push({ id: "interval", group: "risk", title: "Screening interval", sys: intervalSys, options: Object.values(R.RISK_INTERVAL).map((v) => [v, v]), fmt: (v) => v ?? "—" });
 
-    // Wounds
-    const ulcers = [];
-    for (let n = 1; n <= ulcerCount(); n++) {
-      const w = woundInput(n);
-      const side = nv(`j.${n}.foot`);
-      const lopsSide = side ? decidedValue(recs.find((r) => r.id === `lops.${side}`)) : null;
-      const ctx = {
-        sirsCount: sirs.count,
-        zone: nv(`j.${n}.zone`),
-        lops: lopsSide === null ? null : lopsSide === "yes",
-        pulsesPalpable: side ? [nv(`d.${side}.dp`), nv(`d.${side}.pt`)].includes("present") : false,
-        ischaemiaGrade: side ? R.ischaemiaGrade(nv, side) : null,
-      };
-      const infSys = R.infectionGrade(w, ctx);
-      const infRec = {
-        id: `wound.${n}.infection`, group: `wound-${n}`, title: "IWGDF/IDSA infection grade", sys: infSys,
-        options: [[1, "1 · Uninfected"], [2, "2 · Mild"], [3, "3 · Moderate"], [4, "4 · Severe"]],
-        fmt: (v) => (v ? { 1: "1 · Uninfected", 2: "2 · Mild", 3: "3 · Moderate", 4: "4 · Severe" }[v] + (v >= 3 && w.osteomyelitis === "confirmed" ? " (O)" : "") : "—"),
-      };
-      const wagSys = R.wagner(w);
-      const wagRec = { id: `wound.${n}.wagner`, group: `wound-${n}`, title: "Wagner grade", sys: wagSys, options: [1, 2, 3, 4, 5].map((g) => [g, `Grade ${g}`]), fmt: (v) => (v ? `Grade ${v}` : "—") };
-      const infDecided = decidedValue(infRec);
-      const sinSys = R.sinbad(w, ctx, { value: infDecided ?? infSys.value });
-      const sinRec = { id: `wound.${n}.sinbad`, group: `wound-${n}`, title: "SINBAD score", sys: sinSys, options: [0, 1, 2, 3, 4, 5, 6].map((s) => [s, `${s} / 6`]), fmt: (v) => (v === null || v === undefined ? "—" : `${v} / 6`) };
-      const wifiSys = R.wifi(w, ctx, { value: infDecided ?? infSys.value });
-      const wifiRec = { id: `wound.${n}.wifi`, group: `wound-${n}`, title: "WIfI components", sys: wifiSys, options: "text", fmt: (v) => v ?? "—" };
-      recs.push(infRec, wagRec, sinRec, wifiRec);
-      ulcers.push({
-        n, side, ptb: w.ptb, osteomyelitis: w.osteomyelitis, abscess: w.abscess, gangrene: w.gangrene, erythemaCm: w.erythemaCm, onset: w.onset,
-        signCount: w.signs.filter((s) => s !== "none").length,
-        infection: infDecided ?? infSys.value, wagner: decidedValue(wagRec) ?? wagSys.value,
-      });
-    }
-
-    // Escalations (system flags the practitioner validates)
-    const charcotSides = R.SIDES.filter((s) => [].concat(nv(`h.${s}.flags`) ?? []).some((f) => f !== "none"));
-    const severe = Object.fromEntries(R.SIDES.map((s) => [s, R.severeIschaemia(nv, s)]));
-    const severeAny = R.SIDES.some((s) => severe[s].length);
-    const padDecided = R.SIDES.some((s) => decidedValue(recs.find((r) => r.id === `pad.${s}`)) === "yes");
-    const stability = R.footStability({ ulcers, sirsCount: sirs.count, ischaemia: padDecided });
-    const esc = [];
-    if (charcotSides.length) esc.push({ id: "esc.charcot", title: "Suspected Charcot foot", reasons: charcotSides.map((s) => `${R.SIDE_LABEL[s]}: ${formatValue(`h.${s}.flags`, nv(`h.${s}.flags`))}`), source: "Form H" });
-    if (sirs.count >= 2) esc.push({ id: "esc.sirs", title: "Possible systemic infection", reasons: sirs.items, source: sirs.source });
-    if (severeAny) esc.push({ id: "esc.ischaemia", title: "Severe ischaemia: urgent vascular referral", reasons: R.SIDES.flatMap((s) => severe[s].map((t) => `${R.SIDE_LABEL[s]}: ${t}`)), source: "MoC PAD pathway" });
-    if (stability.value === "unstable") esc.push({ id: "esc.unstable", title: "Unstable diabetic foot: consider admission", reasons: stability.reasons, source: stability.source });
-    for (const e of esc) {
-      recs.push({ id: e.id, group: "escalation", title: e.title, sys: { value: "yes", reasons: e.reasons, source: e.source }, options: [["yes", "Escalate"], ["no", "Not applicable"]], fmt: (v) => (v === "yes" ? "Escalate" : "Not applicable") });
-    }
-    const escalated = (eid) => {
-      const rec = recs.find((r) => r.id === eid);
-      return rec ? decidedValue(rec) !== "no" : false;
+    const ulcerIn = (withDecisions) => {
+      const out = [];
+      for (let n = 1; n <= ulcerCount(); n++) {
+        const decidedLabel = (k) => (withDecisions ? (recs.find((r) => r.id === `wound.${n}.${k}`) ? dec(`wound.${n}.${k}`) : null) : null);
+        out.push({
+          n, side: nv(`j.${n}.foot`), zone: nv(`j.${n}.zone`), zoneLabel: (formatValue(`j.${n}.zone`, nv(`j.${n}.zone`)) ?? "").toLowerCase(), aspect: nv(`j.${n}.aspect`),
+          w: woundInput(n), decided: { infection: decidedLabel("infection"), wifi: decidedLabel("wifi") },
+        });
+      }
+      return out;
     };
+    const prac = { antibioticAgent: rv("r.inf.agent"), antibiotics: rv("r.inf.antibiotics"), serious: rv("r.inf.serious") ?? [], xray: rv("r.charcot.xray") };
+    const catalog = typeof TestCatalog !== "undefined" ? TestCatalog.active() : null;
+    const input = { v: nv, patient, labs, decided, prac, catalog, decidedRisk: risk };
 
-    // MOH segmentation: acute foot attack -> active foot disease -> high -> moderate -> low
-    const acute = [];
-    if (escalated("esc.sirs") && sirs.count >= 2) acute.push(`Systemically unwell (${sirs.count} SIRS signs)`);
-    for (const u of ulcers) {
-      const sideIschaemic = u.side && (decidedValue(recs.find((r) => r.id === `pad.${u.side}`)) === "yes" || severe[u.side].length > 0);
-      if (sideIschaemic) acute.push(`Ulcer ${u.n} with ischaemia`);
-      if (u.gangrene && u.gangrene !== "none") acute.push(`Ulcer ${u.n}: gangrene`);
-      if ((u.erythemaCm ?? 0) > 2 || u.infection >= 3) acute.push(`Ulcer ${u.n}: cellulitis or spreading infection`);
-      if (u.abscess === "yes") acute.push(`Ulcer ${u.n}: abscess`);
-      if (u.osteomyelitis !== "no") acute.push(`Ulcer ${u.n}: osteomyelitis ${u.osteomyelitis}`);
+    // First pass: system labels for the wound cards; second pass with the decisions
+    const first = R.evaluate({ ...input, ulcers: ulcerIn(false) });
+    for (const u of first.ulcers) {
+      const n = u.n;
+      recs.push({
+        id: `wound.${n}.infection`, group: `wound-${n}`, title: "Infection severity (IWGDF/IDSA)", sys: { ...u.infectionSys, value: u.infectionSys.value },
+        options: INFECTION_OPTS, fmt: (v) => (v === null || v === undefined ? "—" : R.INFECTION[v] + (v >= 2 && u.osteoConfirmed ? " (O)" : "")),
+      });
+      recs.push({ id: `wound.${n}.wagner`, group: `wound-${n}`, title: "Wagner grade", sys: u.wagnerSys, options: [1, 2, 3, 4, 5].map((g) => [g, `Grade ${g}`]), fmt: (v) => (v ? `Grade ${v}` : "—") });
+      recs.push({ id: `wound.${n}.sinbad`, group: `wound-${n}`, title: "SINBAD score", sys: u.sinbadSys, options: [0, 1, 2, 3, 4, 5, 6].map((x) => [x, `${x} / 6`]), fmt: (v) => (v === null || v === undefined ? "—" : `${v} / 6`) });
+      const comp = u.wifiSys.W ? ` (W${u.wifiSys.W} I${u.wifiSys.I ?? "?"}${u.wifiSys.estimated ? " est." : ""} fI${u.wifiSys.fI ?? "?"})` : "";
+      recs.push({ id: `wound.${n}.wifi`, group: `wound-${n}`, title: "WIfI clinical stage", sys: u.wifiSys, options: [1, 2, 3, 4].map((x) => [x, `Stage ${x}`]), fmt: (v) => (v ? `Stage ${v}${comp}` : "—") });
     }
-    const active = [];
-    if (ulcers.length) active.push(`${plural(ulcers.length, "active ulcer")}`);
-    if (escalated("esc.charcot")) active.push("Suspected Charcot foot");
-    const skin = R.SIDES.flatMap((s) => [].concat(nv(`f.${s}.skin`) ?? []));
-    const referral = R.referral({
-      acute,
-      active,
-      neuropathy: lops,
-      ischaemia: pad,
-      deformity,
-      callus: skin.includes("callus"),
-      skinChanges: skin.some((k) => k !== "callus" && k !== "none"),
-      severeIschaemia: escalated("esc.ischaemia"),
-      previousUlcerOrAmputation: hist.some((h) => h.startsWith("Previous")),
-      renalReplacement: !!patient?.riskHistory?.dialysis,
-    });
-    const followUp = R.followUp({ risk, ulcers: ulcers.length > 0, infected: ulcers.some((u) => u.infection >= 2) });
-    const tests = R.suggestedTests({ ulcers, sirsCount: sirs.count });
-
-    return { recs, sirs, lops, pad, deformity, risk, ulcers, stability, severe, charcotSides, referral, followUp, tests, hist };
+    const ev = R.evaluate({ ...input, ulcers: ulcerIn(true) });
+    return { ...ev, recs, risk, riskSys, hist, sirs: ev.sirs, severe: Object.fromEntries(ev.feet.map((f) => [f.side, f.critical])) };
   }
 
   // ---------- Recommendation cards ----------
@@ -529,8 +496,6 @@
       const host = $(`[data-recs="${rec.group}"]`);
       if (host) host.append(recCard(rec));
     }
-    const escHost = $('[data-recs="escalation"]');
-    if (!escHost.children.length) escHost.append(el("p", "field-hint", "No escalation flags."));
 
     // "Confirm all" for the six per-foot cards; Override stays on each card (F-12)
     const footHost = $('[data-recs="foot"]');
@@ -669,38 +634,83 @@
 
   // ---------- Alerts ----------
 
+  const ALERT_CLASS = { critical: "urgent", warning: "attention", info: "info" };
   function renderAlerts(model) {
-    const alerts = [];
-    const decidedEsc = (eid) => model.recs.find((r) => r.id === eid);
-    const escState = (eid) => {
-      const rec = decidedEsc(eid);
-      if (!rec) return null;
-      const dec = decision(rec.id, rec.sys.value);
-      return dec.decided && dec.value === "no" ? "dismissed" : "active";
-    };
-    if (escState("esc.unstable") === "active") alerts.push(["urgent", `Unstable diabetic foot: ${model.stability.reasons.join("; ")}. Consider hospital admission (MOH criteria).`]);
-    if (escState("esc.sirs") === "active") alerts.push(["urgent", `${model.sirs.count} SIRS signs (${model.sirs.items.join(", ")}): possible systemic infection.`]);
-    if (escState("esc.charcot") === "active") alerts.push(["urgent", `Suspected Charcot foot (${model.charcotSides.join(", ")}): same-day referral to Center of Excellence.`]);
-    if (escState("esc.ischaemia") === "active") alerts.push(["urgent", "Severe ischaemia: urgent vascular referral."]);
-    for (const u of model.ulcers) {
-      if (u.osteomyelitis === "confirmed" || u.osteomyelitis === "suspected") alerts.push(["attention", `Ulcer ${u.n}: osteomyelitis ${u.osteomyelitis}.`]);
-    }
-    if (model.ulcers.length) alerts.push(["attention", `${plural(model.ulcers.length, "ulcer")}: hands-on evaluation required.`]);
+    const items = model.alerts.map((a) => ({ ...a }));
+    // Lab values outside the reference range are notes (handbook section 7)
     for (const [key, ref] of Object.entries(R.LABS)) {
       const v = rnum(`r.lab.${key}`);
       const flag = R.labFlag(key, v, patient?.sex);
-      if (flag) alerts.push(["info", `${ref.label} ${v} ${ref.unit}: ${flag.toLowerCase()}.`]);
+      if (flag) items.push({ level: "info", label: R.LEVEL.info, title: `${ref.label} ${flag.toLowerCase()}`, reason: `${v} ${ref.unit}.`, action: "" });
     }
-    if (nv("a.confirmed") === "needs-update") alerts.push(["info", "Nurse flagged patient record details for update."]);
-
+    if (nv("a.confirmed") === "needs-update") items.push({ level: "info", label: R.LEVEL.info, title: "Patient record needs updating", reason: "Flagged by the nurse.", action: "Update the record." });
     const list = $("#review-alerts");
     list.replaceChildren(
-      ...alerts.map(([level, text]) => {
-        const li = el("li", `flag flag--${level}`, text);
+      ...items.map((a) => {
+        const li = el("li", `flag flag--${ALERT_CLASS[a.level]} alert-item`);
+        const head = el("div", "alert-item__head");
+        head.append(el("span", `badge alert-level alert-level--${a.level}`, a.label), el("strong", "", a.title));
+        li.append(head);
+        if (a.reason) li.append(el("p", "alert-item__reason", a.reason));
+        if (a.action) li.append(el("p", "alert-item__action", `Action: ${a.action}`));
         return li;
       }),
     );
-    $("#review-alerts-empty").hidden = alerts.length > 0;
+    $("#review-alerts-empty").hidden = items.length > 0;
+  }
+
+  // MOH segment card (recomputed on every change; never typed)
+  function renderSegment(model) {
+    const host = $("[data-segment]");
+    if (!host) return;
+    const seg = model.segment;
+    host.replaceChildren();
+    const head = el("div", "segment-card__head");
+    head.append(el("span", `badge segment-badge segment-badge--${seg.value}`, `${seg.value} · ${seg.name}`), el("span", "segment-card__action", seg.action));
+    host.append(head, el("p", "field-hint", `${seg.reasons.join("; ")}. Source: ${seg.source}.`));
+    const undecided = model.recs.filter((r) => r.group === "foot" && !decision(r.id, r.sys.value).decided).length;
+    if (undecided) host.append(el("p", "field-hint", `Uses the system's LOPS, PAD and deformity values until you confirm them (${undecided} pending).`));
+  }
+
+  function renderDisposition(model) {
+    const d = $("[data-disposition]");
+    if (d) {
+      d.replaceChildren(el("strong", "", model.disposition.label));
+      d.dataset.level = model.disposition.value;
+    }
+    const t = $("[data-teams]");
+    if (t) t.replaceChildren(...(model.teams.length ? model.teams.map((x) => {
+      const li = el("li");
+      li.append(el("strong", "", x.team), ` · ${x.why}`);
+      return li;
+    }) : [el("li", "field-hint", "No additional teams suggested.")]));
+  }
+
+  // Per ulcer: suggested type, offloading, dressing, healing trend (handbook section 6)
+  function renderWoundHints(model) {
+    for (const u of model.ulcers) {
+      const host = $(`[data-wound-hints="${u.n}"]`);
+      if (!host) continue;
+      const rows = [];
+      if (u.suggestedType) rows.push(["Suggested type", u.suggestedType.replace("neuroischaemic", "neuro-ischaemic")]);
+      rows.push(["Offloading", u.offloading]);
+      if (u.dressing) rows.push(["Dressing", u.dressing]);
+      if (u.area !== null) rows.push(["Area", `${u.area} cm²${u.change !== null ? ` (${u.change > 0 ? "+" : ""}${u.change}% since last visit)` : ""}${u.nonHealing ? " · not healing" : ""}`]);
+      if (u.infection === 0 && u.infectionSys.value === 0) rows.push(["Antibiotics", "Not indicated for an uninfected ulcer"]);
+      const dl = el("dl", "detail-grid detail-grid--plain wound-hints__list");
+      for (const [k, v] of rows) {
+        const d = el("div");
+        d.append(el("dt", "", k), el("dd", "", v));
+        dl.append(d);
+      }
+      host.replaceChildren(el("p", "wound-hints__title", "System suggestions"), dl);
+    }
+    // Charcot block: shown when the Charcot flag is on
+    const charcotBlock = $('[data-reveal="charcot"]');
+    if (charcotBlock) {
+      charcotBlock.hidden = !model.charcot.flag;
+      $("[data-charcot-reason]").textContent = model.charcot.flag ? `Charcot flag: ${model.charcot.reasons.join("; ")}.` : "";
+    }
   }
 
   // ---------- Data-driven blocks ----------
@@ -788,7 +798,8 @@
 
     const severeText = R.SIDES.flatMap((s) => model.severe[s].map((t) => `${R.SIDE_LABEL[s]}: ${t}`));
     $('[data-alert="severe-ischaemia"]').hidden = !severeText.length;
-    $("[data-severe-text]").textContent = severeText.length ? `${severeText.join("; ")}. Urgent vascular referral and arterial imaging (MoC).` : "";
+    $("[data-severe-text]").textContent = severeText.length ? `Critical perfusion. ${severeText.join("; ")}. Urgent vascular referral.` : "";
+    for (const f of model.feet) if (f.calcification) host.append(el("p", "field-hint", `${R.SIDE_LABEL[f.side]} foot: possible arterial calcification, use TBI or toe pressure. An ABI above 1.30 is unreliable, not good.`));
   }
 
   function renderInfection(model) {
@@ -802,7 +813,7 @@
     };
     add("SIRS signs", model.sirs.count ? `${model.sirs.count}: ${model.sirs.items.join(", ")}` : "None");
     for (const u of model.ulcers) {
-      add(`Ulcer ${u.n}`, u.infection ? `IWGDF ${{ 1: "1 · Uninfected", 2: "2 · Mild", 3: "3 · Moderate", 4: "4 · Severe" }[u.infection]}` : "Grade pending");
+      add(`Ulcer ${u.n}`, u.infectionSys.value === null && u.infection === 0 ? "Pending: record the local signs" : R.INFECTION[u.infection] + (u.infection >= 2 && u.osteoConfirmed ? " (O)" : ""));
     }
     if (!model.ulcers.length) add("Ulcers", "None recorded");
     host.append(dl);
@@ -811,11 +822,11 @@
     $("[data-allergies]").hidden = !allergies.length;
     $("[data-allergy-text]").textContent = allergies.join(", ");
 
-    const worst = Math.max(0, ...model.ulcers.map((u) => u.infection ?? 0));
+    const worst = model.maxSev;
     $("[data-antibiotic-hint]").textContent =
-      worst >= 3 ? "Moderate / severe infection: broad-spectrum parenteral antibiotics, MDT and admission criteria apply (MOH-EC)."
-        : worst === 2 ? "Mild infection: oral empiric antibiotics can be considered; take a culture and reassess in 24–48 h (MOH-EC)."
-          : model.ulcers.length ? "Uninfected ulcer: do not prescribe antibiotics (DF102)."
+      worst >= 2 ? "Moderate or severe infection: parenteral antibiotics, specialist review; admission criteria apply."
+        : worst === 1 ? "Mild infection: oral empiric antibiotics can be considered; take a culture and reassess in 24–48 h."
+          : model.ulcers.length ? "Uninfected ulcer: antibiotics are not indicated."
             : "No ulcer recorded.";
   }
 
@@ -851,6 +862,8 @@
     add("Risk category", model.risk === null ? "Pending" : Patients.RISK[model.risk].label);
     const interval = decidedValue(model.recs.find((r) => r.id === "interval"));
     add("Screening interval", interval ?? "Pending");
+    add("MOH segment", `${model.segment.value} · ${model.segment.name}`);
+    add("Disposition", model.disposition.label);
     add("PAD conclusion", formatPrac("r.pad.conclusion"));
     for (const u of model.ulcers) {
       const recFor = (k) => model.recs.find((r) => r.id === `wound.${u.n}.${k}`);
@@ -872,7 +885,7 @@
     destination: { er: "Emergency department", secondary: "Secondary Care", private: "Private Center", vascular: "Vascular", "wound-care": "Wound Care", tertiary: "Tertiary" },
     urgency: { routine: "Routine", soon: "Soon", urgent: "Urgent", emergency: "Emergency" },
     timing: { today: "today", "24h": "within 24 h", week: "within 1 week", "3weeks": "within 3 weeks", scheduled: "scheduled" },
-    followup: { "48h": "48 hours", "1w": "1 week", "2w": "2 weeks", "1m": "1 month", "1-3m": "1–3 months", "3-6m": "3–6 months", "6-12m": "6–12 months", "12m": "12 months" },
+    followup: { "48h": "48 hours", "1w": "1 week", "2w": "2 weeks", "1m": "1 month", "1-2m": "1–2 months", "1-3m": "1–3 months", "3-6m": "3–6 months", "6-12m": "6–12 months", "12m": "12 months" },
   };
 
   function renderReferralSuggestion(model) {
@@ -895,7 +908,7 @@
     const hint = $("[data-followup-suggestion]");
     hint.replaceChildren();
     if (!model.followUp) {
-      hint.textContent = "A follow-up suggestion appears once the risk category is decided.";
+      hint.textContent = "A follow-up suggestion appears once the segment and risk category are known.";
       return;
     }
     hint.append(`Suggested: ${OPTION_TEXT.followup[model.followUp.value]} (${model.followUp.reasons.join("; ")}). `);
@@ -939,9 +952,10 @@
     const skin = R.SIDES.map((s) => [].concat(nv(`f.${s}.skin`) ?? []).filter((x) => x !== "none").length ? `${s}: ${listOf(`f.${s}.skin`).toLowerCase()}` : null).filter(Boolean);
     if (skin.length) push(`Skin: ${skin.join("; ")}.`);
     if (nv("g.footwear")) push(`Footwear appropriate: ${listOf("g.footwear").toLowerCase()}${nv("g.footwear") === "no" ? ` (${listOf("g.concerns").toLowerCase()})` : ""}.`);
-    push(model.charcotSides.length ? `Charcot red flags: ${model.charcotSides.map((s) => `${s} ${listOf(`h.${s}.flags`).toLowerCase()}`).join("; ")}.` : "No Charcot red flags.");
+    push(model.charcot.flag ? `Suspected Charcot foot: ${model.charcot.reasons.join("; ")}.${rv("r.charcot.stage") ? ` Eichenholtz stage ${rv("r.charcot.stage")}.` : ""}` : "No Charcot flag.");
     if (nv("h.left.temp") && nv("h.right.temp")) push(`Skin temperature L ${nv("h.left.temp")} °C, R ${nv("h.right.temp")} °C (difference ${Math.abs(nv("h.left.temp") - nv("h.right.temp")).toFixed(1)} °C).`);
-    if (model.hist.length) push(`History: ${model.hist.join("; ")}.`);
+    if (model.hist.items.length) push(`History: ${model.hist.items.join("; ")}.`);
+    if (nv("a.sbp") || nv("a.glucose")) push(`BP ${nv("a.sbp") ?? "—"} mmHg systolic, capillary glucose ${nv("a.glucose") ?? "—"} mg/dL. Appearance: ${listOf("a.appearance").toLowerCase()}.`);
     for (const u of model.ulcers) {
       const p = `r.w.${u.n}`;
       const size = [rv(`${p}.length`), rv(`${p}.width`), rv(`${p}.depth`)];
@@ -963,10 +977,11 @@
       const recFor = (k) => model.recs.find((r) => r.id === `wound.${u.n}.${k}`);
       push(`Ulcer ${u.n}: Wagner ${recFor("wagner").fmt(decidedValue(recFor("wagner")) ?? recFor("wagner").sys.value)}, infection ${recFor("infection").fmt(decidedValue(recFor("infection")) ?? recFor("infection").sys.value)}, SINBAD ${recFor("sinbad").fmt(decidedValue(recFor("sinbad")) ?? recFor("sinbad").sys.value)}, ${recFor("wifi").fmt(decidedValue(recFor("wifi")) ?? recFor("wifi").sys.value)}.`);
     }
-    for (const rec of model.recs.filter((r) => r.group === "escalation")) {
-      const v = decidedValue(rec);
-      push(`${rec.title}${v === "no" ? ": reviewed, not applicable" : ""}.`);
-    }
+    push(`MOH segment: ${model.segment.value} · ${model.segment.name}. ${model.segment.action}`);
+    const crit = model.alerts.filter((a) => a.level === "critical");
+    if (crit.length) push(`Critical alerts: ${crit.map((a) => a.title).join("; ")}.`);
+    push(`Disposition: ${model.disposition.label}.`);
+    if (model.teams.length) push(`Teams: ${model.teams.map((t) => t.team).join(", ")}.`);
     if (rv("r.int.skin")) push(`Deformity / skin diagnosis: ${rv("r.int.skin")}.`);
     if (rv("r.int.impression")) push(`Impression: ${rv("r.int.impression")}`);
     push();
@@ -1251,6 +1266,9 @@
     renderInterpretation(model);
     renderReferralSuggestion(model);
     renderFollowUp(model);
+    renderSegment(model);
+    renderDisposition(model);
+    renderWoundHints(model);
     $$('[data-reveal="antibiotic-detail"]').forEach((n) => (n.hidden = !["oral", "iv"].includes(rv("r.inf.antibiotics"))));
     $$('[data-reveal="referral"]').forEach((n) => (n.hidden = rv("r.ref.needed") !== "yes"));
     const declineQ = $("[data-decline-reason]");
@@ -1461,12 +1479,55 @@
       return;
     }
     $("#confirm-sign-text").textContent = `${Privacy.name(patient.name, record.fileNumber)} (${record.fileNumber}). After signing, the review is locked and the note is final.`;
+    renderChecklist();
     ack.checked = false;
     ackError.hidden = true;
     signConfirm.disabled = true;
     confirmDialog.returnValue = "";
     confirmDialog.showModal();
   });
+
+  // Handbook section 9: open items shown before signing. They don't block; required sections do.
+  function openItems() {
+    const items = [];
+    for (const u of model.ulcers) {
+      const p = `r.w.${u.n}`;
+      if (!rv(`${p}.length`) || !rv(`${p}.width`)) items.push(`Ulcer ${u.n}: no size`);
+      if (!u.zone) items.push(`Ulcer ${u.n}: no location`);
+      if (!(nv(`j.${u.n}.photo`) ?? []).length) items.push(`Ulcer ${u.n}: no photo`);
+      if (u.aspect === "plantar" && !u.offloadingChosen) items.push(`Ulcer ${u.n}: plantar ulcer without offloading`);
+    }
+    if (model.maxSev >= 1 && !rv("r.inf.agent")) items.push("Infected ulcer without an antibiotic recorded");
+    if (typeof TestOrders !== "undefined") {
+      const orders = TestOrders.forRecord(record.id);
+      const decidedIds = new Set((Db.read("ndfip.suggestions", []) ?? []).filter((x) => x.recordId === record.id).map((x) => x.testId));
+      const pending = model.tests.filter((t) => !orders.some((o) => o.testId === t.value) && !decidedIds.has(t.value));
+      if (pending.length) items.push(`${plural(pending.length, "suggested test")} still pending: ${pending.map((t) => t.label).join(", ")}`);
+    }
+    if (!(rv("r.plan.education") ?? []).length) items.push("No education recorded");
+    const crit = model.alerts.filter((a) => a.level === "critical");
+    if (crit.length) items.push(`Critical alerts present: ${crit.map((a) => a.title).join("; ")}`);
+    return items;
+  }
+
+  function renderChecklist() {
+    let box = $("#sign-checklist");
+    if (!box) {
+      box = el("div", "sign-checklist");
+      box.id = "sign-checklist";
+      $("#confirm-sign .sign-ack").before(box);
+    }
+    const items = openItems();
+    box.replaceChildren();
+    if (!items.length) {
+      box.append(el("p", "field-hint", "No open items."));
+      return;
+    }
+    box.append(el("p", "sign-checklist__title", "Open items (you can still sign)"));
+    const ul = el("ul", "sign-checklist__list");
+    items.forEach((t) => ul.append(el("li", "", t)));
+    box.append(ul);
+  }
 
   // UAT-18: the notice must be acknowledged; the Sign button stays off until it is
   const ack = $("#ack-notice");
@@ -1498,7 +1559,17 @@
       quiet: true,
       extra: {
         record: { status: "reviewed", signedAt: at },
-        review: { signedBy: user.name, signedById: user.id, signedAt: at, finalNote: rv("r.note"), instructionsText: rv("r.instructions"), medications: rv("r.med.text") ?? "", ack: { at, by: user.name, text: notice } },
+        review: {
+          signedBy: user.name, signedById: user.id, signedAt: at, finalNote: rv("r.note"), instructionsText: rv("r.instructions"), medications: rv("r.med.text") ?? "", ack: { at, by: user.name, text: notice },
+          // Handbook section 10: snapshot of the computed results, the alerts shown and the versions used
+          computed: {
+            ruleset: model.ruleset, layoutVersion: record.layoutVersion ?? 1, at,
+            risk: { system: model.riskSys.value, final: model.risk }, segment: { value: model.segment.value, name: model.segment.name },
+            ulcers: model.ulcers.map((u) => ({ n: u.n, infection: u.infection, wagner: u.wagnerSys.value, sinbad: u.sinbadSys.value, wifi: u.wifiStage })),
+            alerts: model.alerts.map((a) => ({ level: a.level, title: a.title })), disposition: model.disposition.value, teams: model.teams.map((t) => t.team),
+            openItems: openItems(),
+          },
+        },
       },
     });
     if (!ok) return;

@@ -42,29 +42,40 @@ const TestCatalog = (() => {
     insurance: false, escalateAfterHours: 24, backup: "", status: "active", ...extra,
   });
 
-  // Fictional demo rules. Values match ClinicalRules.suggestedTests
+  // Fictional demo approval rules. Ids match ClinicalRules.suggestedTests (handbook section 7).
+  // baseline: member of the baseline panel suggested for every active ulcer (set in Clinic setup).
+  const B = { baseline: true };
   const SEED = [
-    t("cbc", "CBC (WBC, Hb, platelets)", "lab"),
-    t("esr", "ESR", "lab"),
-    t("crp", "CRP", "lab"),
-    t("fbg", "Fasting blood glucose", "lab"),
-    t("hba1c", "HbA1c", "lab"),
-    t("creatinine", "Renal function (urea, creatinine, eGFR)", "lab"),
+    t("cbc", "CBC (WBC, Hb, platelets)", "lab", undefined, B),
+    t("esr", "ESR", "lab", undefined, B),
+    t("crp", "CRP", "lab", undefined, B),
+    t("fbg", "Fasting blood glucose", "lab", undefined, B),
+    t("hba1c", "HbA1c", "lab", undefined, B),
+    t("creatinine", "Renal function (urea, creatinine, eGFR)", "lab", undefined, B),
+    t("electrolytes", "Electrolytes", "lab"),
+    t("lactate", "Lactate", "lab"),
+    t("albumin", "Albumin", "lab"),
     t("lipids", "Lipid profile", "lab"),
     t("procalcitonin", "Procalcitonin", "lab", { mode: "role", role: "senior" }, { escalateAfterHours: 4 }),
-    t("wound-culture", "Wound culture (C&S)", "microbiology"),
+    t("wound-culture", "Wound culture (C&S)", "microbiology", undefined, B),
+    t("deep-tissue-culture", "Deep tissue culture", "microbiology"),
     t("bone-culture", "Bone culture", "microbiology", { mode: "person", people: ["100006"] }, { escalateAfterHours: 8, backup: "200021" }),
     t("blood-culture", "Blood cultures", "microbiology"),
-    t("xray-foot", "X-ray foot", "imaging"),
-    t("mri-foot", "MRI foot", "imaging", { mode: "person", people: ["100006"] }, { insurance: true, escalateAfterHours: 24 }),
+    t("xray-foot", "Plain X-ray of the foot", "imaging"),
+    t("wb-xray", "Weight-bearing X-ray, foot and ankle", "imaging"),
+    t("mri-foot", "MRI of the foot", "imaging", { mode: "person", people: ["100006"] }, { insurance: true, escalateAfterHours: 24 }),
     t("duplex", "Arterial duplex", "imaging", { mode: "people", people: ["100006", "200021"] }, { insurance: true, escalateAfterHours: 48 }),
     t("abi-tbi", "ABI / TBI", "imaging"),
   ];
 
   function load() {
     const saved = Db.read(KEY, null);
-    if (saved?.[DEFINITION]) return saved;
-    return { [DEFINITION]: { rev: 1, updatedAt: null, updatedBy: null, tests: SEED } };
+    if (!saved?.[DEFINITION]) return { [DEFINITION]: { rev: 1, updatedAt: null, updatedBy: null, tests: SEED } };
+    // Tests added to the seed since this catalogue was saved; baseline flags for older saves
+    const cur = saved[DEFINITION];
+    const missing = SEED.filter((x) => !cur.tests.some((y) => y.id === x.id));
+    cur.tests = [...cur.tests.map((y) => ("baseline" in y ? y : { ...y, baseline: !!SEED.find((x) => x.id === y.id)?.baseline })), ...missing];
+    return saved;
   }
 
   const state = (definition = DEFINITION) => load()[definition] ?? { rev: 1, tests: [] };

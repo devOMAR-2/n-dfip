@@ -69,6 +69,88 @@ const ScreeningSchema = {
    "sub": "Vital signs"
   },
   {
+   "name": "a.sbp",
+   "label": "Systolic blood pressure",
+   "type": "number",
+   "unit": "mmHg",
+   "min": 50,
+   "max": 260,
+   "step": "1",
+   "required": true,
+   "section": "A",
+   "sub": "Vital signs"
+  },
+  {
+   "name": "a.glucose",
+   "label": "Capillary glucose",
+   "type": "number",
+   "unit": "mg/dL",
+   "min": 20,
+   "max": 600,
+   "step": "1",
+   "required": false,
+   "section": "A",
+   "sub": "Vital signs"
+  },
+  {
+   "name": "a.appearance",
+   "label": "General appearance",
+   "type": "radio",
+   "options": [
+    [
+     "well",
+     "Well"
+    ],
+    [
+     "unwell",
+     "Unwell"
+    ]
+   ],
+   "required": true,
+   "section": "A",
+   "sub": "General condition"
+  },
+  {
+   "name": "a.mobility",
+   "label": "Mobility",
+   "type": "radio",
+   "options": [
+    [
+     "independent",
+     "Independent"
+    ],
+    [
+     "walking-aid",
+     "Walking aid"
+    ],
+    [
+     "wheelchair",
+     "Wheelchair"
+    ]
+   ],
+   "required": true,
+   "section": "A",
+   "sub": "General condition"
+  },
+  {
+   "name": "a.support",
+   "label": "Social support",
+   "type": "radio",
+   "options": [
+    [
+     "family-carer",
+     "Family or carer"
+    ],
+    [
+     "lives-alone",
+     "Lives alone"
+    ]
+   ],
+   "required": false,
+   "section": "A",
+   "sub": "General condition"
+  },
+  {
    "name": "a.reason",
    "label": "Reason for screening",
    "type": "radio",
@@ -97,11 +179,27 @@ const ScreeningSchema = {
    "options": [
     [
      "ckd",
-     "CKD / dialysis"
+     "Chronic kidney disease"
+    ],
+    [
+     "dialysis",
+     "Dialysis or end-stage renal disease"
+    ],
+    [
+     "previous-charcot",
+     "Previous Charcot foot"
     ],
     [
      "cardiovascular",
      "Cardiovascular disease"
+    ],
+    [
+     "hypertension",
+     "Hypertension"
+    ],
+    [
+     "dyslipidaemia",
+     "Dyslipidaemia"
     ],
     [
      "retinopathy",
@@ -149,6 +247,66 @@ const ScreeningSchema = {
    "required": false,
    "section": "B",
    "sub": "Smoking"
+  },
+  {
+   "name": "b.meds",
+   "label": "Current medications",
+   "type": "checkbox",
+   "options": [
+    [
+     "insulin",
+     "Insulin"
+    ],
+    [
+     "oral",
+     "Oral agents"
+    ],
+    [
+     "antiplatelet",
+     "Antiplatelet"
+    ],
+    [
+     "statin",
+     "Statin"
+    ],
+    [
+     "anticoagulant",
+     "Anticoagulant"
+    ],
+    [
+     "antibiotics",
+     "Antibiotics now"
+    ],
+    [
+     "none",
+     "None"
+    ]
+   ],
+   "required": true,
+   "section": "B",
+   "sub": "Medications & allergies"
+  },
+  {
+   "name": "b.allergy",
+   "label": "Antibiotic allergy",
+   "type": "radio",
+   "options": [
+    [
+     "none",
+     "None known"
+    ],
+    [
+     "beta-lactam",
+     "Beta-lactam (penicillin, cephalosporin)"
+    ],
+    [
+     "other",
+     "Other"
+    ]
+   ],
+   "required": true,
+   "section": "B",
+   "sub": "Medications & allergies"
   },
   {
    "name": "c.method",
@@ -444,7 +602,25 @@ const ScreeningSchema = {
    ],
    "required": true,
    "section": "D",
-   "sub": "Claudication"
+   "sub": "Claudication & rest pain"
+  },
+  {
+   "name": "d.restpain",
+   "label": "Rest pain",
+   "type": "radio",
+   "options": [
+    [
+     "yes",
+     "Yes"
+    ],
+    [
+     "no",
+     "No"
+    ]
+   ],
+   "required": true,
+   "section": "D",
+   "sub": "Claudication & rest pain"
   },
   {
    "name": "d.left.dp",
@@ -628,7 +804,7 @@ const ScreeningSchema = {
   },
   {
    "name": "d.left.skin",
-   "label": "Skin colour, temperature, oedema",
+   "label": "Skin signs",
    "type": "checkbox",
    "options": [
     [
@@ -636,24 +812,24 @@ const ScreeningSchema = {
      "Pallor"
     ],
     [
-     "rubor",
-     "Rubor"
-    ],
-    [
-     "cyanosis",
-     "Cyanosis"
+     "dusky",
+     "Dusky"
     ],
     [
      "cool",
-     "Cool foot"
-    ],
-    [
-     "gradient",
-     "Temperature gradient"
+     "Cool to touch"
     ],
     [
      "oedema",
      "Oedema"
+    ],
+    [
+     "hair-loss",
+     "Hair loss"
+    ],
+    [
+     "atrophic",
+     "Atrophic skin"
     ],
     [
      "none",
@@ -696,7 +872,7 @@ const ScreeningSchema = {
   },
   {
    "name": "d.right.skin",
-   "label": "Skin colour, temperature, oedema",
+   "label": "Skin signs",
    "type": "checkbox",
    "options": [
     [
@@ -704,24 +880,24 @@ const ScreeningSchema = {
      "Pallor"
     ],
     [
-     "rubor",
-     "Rubor"
-    ],
-    [
-     "cyanosis",
-     "Cyanosis"
+     "dusky",
+     "Dusky"
     ],
     [
      "cool",
-     "Cool foot"
-    ],
-    [
-     "gradient",
-     "Temperature gradient"
+     "Cool to touch"
     ],
     [
      "oedema",
      "Oedema"
+    ],
+    [
+     "hair-loss",
+     "Hair loss"
+    ],
+    [
+     "atrophic",
+     "Atrophic skin"
     ],
     [
      "none",
@@ -1003,11 +1179,15 @@ const ScreeningSchema = {
     ],
     [
      "maceration",
-     "Maceration"
+     "Interdigital maceration"
     ],
     [
      "blister",
      "Blister"
+    ],
+    [
+     "haemorrhage",
+     "Haemorrhage under callus"
     ],
     [
      "pre-ulcer",
@@ -1041,11 +1221,15 @@ const ScreeningSchema = {
     ],
     [
      "maceration",
-     "Maceration"
+     "Interdigital maceration"
     ],
     [
      "blister",
      "Blister"
+    ],
+    [
+     "haemorrhage",
+     "Haemorrhage under callus"
     ],
     [
      "pre-ulcer",

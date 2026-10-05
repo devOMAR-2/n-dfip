@@ -213,6 +213,18 @@
     insurance.append(box, el("span", "", "Insurance approval required (tracked separately from the clinical approval)"));
     body.append(insurance);
 
+    // Handbook section 9: the senior doctor marks which tests form the baseline panel
+    const baseline = el("label", "toggle q--wide");
+    const bbox = el("input", "checkbox");
+    bbox.type = "checkbox";
+    bbox.checked = !!test.baseline;
+    bbox.addEventListener("change", () => {
+      test.baseline = bbox.checked;
+      changed();
+    });
+    baseline.append(bbox, el("span", "", "Baseline panel: suggested for every patient with an active ulcer"));
+    body.append(baseline);
+
     const footer = el("div", "test-card__footer");
     const retire = el("button", "btn btn-outline btn-sm", test.status === "retired" ? "Restore" : "Retire");
     retire.type = "button";

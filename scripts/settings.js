@@ -123,7 +123,8 @@
         perFoot,
         unit: f.unit ?? "",
         key,
-        fixed: perUlcer, // per-ulcer questions stay where they are
+        // Per-ulcer questions stay where they are; risk-calculation questions are locked on (handbook §9)
+        fixed: perUlcer || Layout.locked(key),
       });
     }
     // The nurse form places sensation sites on a foot map
@@ -142,7 +143,7 @@
       {
         id: "diabetic-foot",
         name: "Diabetic Foot",
-        live: 2, // linked to the live pages (page-layout versions)
+        live: 3, // linked to the live pages (page-layout versions); bump to re-seed saved builders
         excerpt: "Structured foot screening by trained staff, prepared for practitioner review. One connected record supporting prevention, continuity and limb preservation.",
         nurses: ["100002", "200011"],
         practitioners: ["100003", "200021"],
@@ -793,7 +794,8 @@
       $$("input, select, textarea, button", grid).forEach((f) => {
         if (!f.closest("[data-keep]")) f.disabled = true;
       });
-      grid.prepend(el("p", "field-hint builtin-note", question.fixedMap ? "Built-in foot map. Shown here for reference." : "Built-in question: the wording and answers are fixed. You can move it or switch it off."));
+      grid.prepend(el("p", "field-hint builtin-note", question.fixedMap ? "Built-in foot map. Shown here for reference." : question.fixed ? "Built-in question that feeds the risk calculation: always on and can't be moved." : "Built-in question: the wording and answers are fixed. You can move it or switch it off."));
+      if (question.fixed) $$("[data-keep] input, [data-keep] select", grid).forEach((f) => (f.disabled = true));
     }
     const previewWrap = el("div", "question-preview-wrap");
     previewWrap.append(el("p", "eyebrow", "Preview"), preview);

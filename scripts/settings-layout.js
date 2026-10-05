@@ -231,7 +231,7 @@
     search.setAttribute("aria-label", "Find a question");
     c.append(search);
     const list = el("div", "layout-questions");
-    const items = [...Layout.catalogue("screening"), ...Layout.catalogue("review")].filter((q) => q.movable);
+    const items = [...Layout.catalogue("screening"), ...Layout.catalogue("review")].filter((q) => q.movable || q.locked);
     const here = items.filter((q) => Layout.placement(config, q.key).page === page);
     const groups = new Map();
     for (const q of here) {
@@ -295,6 +295,10 @@
     });
     secSel.addEventListener("change", () => save({ page: pl.page, section: secSel.value, enabled: box.checked }));
     box.addEventListener("change", () => save({ page: pl.page, section: pl.section, enabled: box.checked }));
+    if (q.locked) {
+      [pageSel, secSel, box].forEach((c) => (c.disabled = true));
+      name.append(el("span", "badge badge-muted", "Locked on: feeds the risk calculation"));
+    }
     row.append(name, pageSel, secSel, on);
     return row;
   }

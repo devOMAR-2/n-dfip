@@ -8,10 +8,10 @@
 |---|---|
 | Document | Business Requirements Document (BRD) |
 | Product | N-DFIP, National Diabetic Foot Intelligence Platform |
-| Version | 0.1 (draft) |
+| Version | 0.2 (draft) |
 | Date | 2026-10-05 |
 | Status | Draft for client review |
-| Requirement source | UAT Comments, Round 1 (UAT-01 to UAT-25, F-01 to F-13, EC-01 to EC-15), the N-DFIP Project Dossier, the Primary Care Screening Form (nurse / doctor split), MOH Comprehensive Model of Care for Diabetic Foot Prevention and Management v1.0 (2024), MOH Criteria for Diabetic Foot Emergency, Amputation and Admission v1.0, Diabetic Foot 101 and 102 teaching decks |
+| Requirement source | UAT Comments, Round 1 (UAT-01 to UAT-25, F-01 to F-13, EC-01 to EC-15), the N-DFIP Developer Handbook: Clinical Logic and Terminology (the reference for all clinical logic), the N-DFIP Project Dossier, the Primary Care Screening Form (nurse / doctor split), MOH Comprehensive Model of Care for Diabetic Foot Prevention and Management v1.0 (2024), MOH Criteria for Diabetic Foot Emergency, Amputation and Admission v1.0, Diabetic Foot 101 and 102 teaching decks |
 | Basis for "Demo status" | The front-end demo build of 5 October 2026 (plain HTML, browser storage, fictional data) |
 | Approval | To be reviewed and approved by the client before it is final (UAT-25) |
 
@@ -20,6 +20,7 @@
 | Version | Date | Author | Change |
 |---|---|---|---|
 | 0.1 | 2026-10-05 | Development team | First draft, written after UAT round 1 |
+| 0.2 | 2026-10-05 | Development team | Clinical rules rewritten to the Developer Handbook (sections 5 to 10); F-04, F-05, F-06 resolved; handbook open points added to Section 16 |
 
 ### 0.2 How to read this document
 
@@ -88,7 +89,7 @@ This BRD describes the scope, users, workflows, functional requirements, clinica
 ### 2.3 Constraints
 
 - The clinical rules come only from the cited source documents. Where those documents conflict or are silent, the point is listed as an open decision (Section 16).
-- Some rules depend on the **Developer Handbook**, which the development team doesn't yet have. Those items are marked **Blocked** (Section 16.2).
+- The **Developer Handbook** is the reference for the clinical logic; the UAT comments are the reference for screens, permissions and workflow. Items the handbook marks "(prototype)" still need the clinical lead's sign-off (Section 16.1).
 
 ## 3. Stakeholders
 
@@ -398,9 +399,9 @@ Columns: **ID** · **Requirement** · **Source** · **Demo status** · **Back en
 | FR-064 | Wound evaluation includes abscess (yes / no), used for Wagner 3, moderate infection and acute foot attack. | F-07 | Shown | — |
 | FR-065 | Labs include CBC (WBC, Hb, platelets) and renal function (urea, creatinine, eGFR) with sex-specific ranges from MOH Table 7; creatinine in mg/dL. | F-08 | Shown | Lab interface (Section 12) |
 | FR-066 | Medications: free-text section (medication, dose, instructions); the patient's recorded allergies are shown next to it; it appears in the clinical note and the patient file. | UAT-16 | Shown | — |
-| FR-067 | Referral suggestion follows the MoC segmentation guide (CR-12). | F-04 | Shown; **to verify** against handbook §5 step 6 | — |
-| FR-068 | Clinical alerts list per the Developer Handbook §8. | F-05 | **Blocked** (handbook) | — |
-| FR-069 | WIfI clinical stage (1–4) from the published WIfI table, approved by the clinical lead. | F-06 | **Blocked** (handbook §6); the three component grades are shown | — |
+| FR-067 | Referral suggestion follows the MOH segment (handbook §5 step 6, CR-12), shown with the segment and its action. | F-04 | Shown; matches handbook test cases 1 to 4 | — |
+| FR-068 | Clinical alerts per handbook §8: levels critical ("Act now"), warning ("Check"), info ("Note"); each with title, reason and action; sorted by level; nurse-side "Tell the practitioner now". | F-05 | Shown | Thresholds from the approved rule set |
+| FR-069 | WIfI clinical stage 1 to 4 from the handbook §6 table (W, I, fI), overridable with a reason; ischaemia estimated from pulses / Doppler when no measurement exists, and flagged. | F-06 | Shown | Table approval by the clinical lead |
 | FR-070 | Test approval rules and insurance approval (Section 7.10), with clear states and approver notification. | UAT-17 | Shown (in-app bell; no e-mail) | Notifications (e-mail/SMS), insurance interface |
 | FR-071 | Escalation of pending approvals after a set time to a named backup or the supervisor. | EC-13 | Shown | Scheduled job on the server |
 | FR-072 | Generated clinical note and patient instructions, editable, regenerable. | Screening form | Shown | — |
@@ -436,37 +437,37 @@ Columns: **ID** · **Requirement** · **Source** · **Demo status** · **Back en
 
 ## 9. Clinical rules and sources
 
-All rules are decision support. Every result shows its value, the reasons and the source, and the practitioner confirms or overrides it (with a reason). A value that was not assessed is never treated as normal (Project Dossier).
+The **Developer Handbook (Clinical Logic and Terminology)**, sections 5 to 8, is the reference. Every rule is a pure function (findings in, results out), recomputed on every change, and every threshold sits in a versioned rule set (`df-rules` 1.0) that the clinical lead approves. A signed encounter stores the computed results, the alerts shown and the rule-set and layout versions (handbook §10). "Not assessed" is never "normal": a missing value is null and a comparison with it is false. The demo passes the handbook's test cases 1 to 8 (`node tools/test_rules.js`); cases 9 and 10 (locking, edit trail) are workflow rules shown in the demo.
 
-| ID | Rule | Logic (summary) | Source | Status |
+| ID | Rule | Logic (summary) | Handbook | Status |
 |---|---|---|---|---|
-| CR-01 | SIRS count | Temperature > 38 or < 36 °C; heart rate > 90; respiratory rate > 20; WBC > 12 or < 4 ×10⁹/L | MOH-EC, IWGDF/IDSA | Decision: 4 IWGDF items used; MOH-EC lists 7 (open) |
-| CR-02 | LOPS per foot | Monofilament (or light touch when none available) not felt at any of hallux, 1st, 5th metatarsal head, or tuning-fork vibration absent → LOPS; all felt → no LOPS; otherwise undecided | MoC (draft rule) | Needs clinical sign-off |
-| CR-03 | PAD per foot | Monophasic Doppler, ABI < 0.9, ankle pressure < 50 mmHg, TBI < 0.75, toe pressure < 60 mmHg or TcPO₂ < 55 mmHg → PAD. ABI > 1.3 = possible calcinosis, so use TBI or TcPO₂. Non-palpable pulses → bedside testing needed. | MoC PAD pathway | — |
-| CR-04 | Severe ischaemia | ABI < 0.5, ankle < 50, toe < 30 or TcPO₂ < 25 mmHg → urgent vascular referral | MoC PAD pathway | — |
-| CR-05 | Deformity | Any deformity finding recorded | Screening form F | — |
-| CR-06 | IWGDF risk 0–3 and screening interval | 0 no LOPS/PAD (yearly); 1 LOPS or PAD (6–12 months); 2 LOPS+PAD, or with deformity (3–6 months); 3 plus previous ulcer, amputation or end-stage renal disease (1–3 months) | MoC Table 1 (IWGDF) | — |
-| CR-07 | Infection grade | < 2 local signs: uninfected. ≥ 2: mild. Erythema ≥ 2 cm or deeper tissue (incl. abscess, osteomyelitis): moderate. ≥ 2 SIRS: severe. "(O)" for osteomyelitis. | IWGDF/IDSA via MOH-EC | — |
-| CR-08 | Wagner 1–5 | Extensive gangrene 5; localised gangrene 4; abscess, probe-to-bone, bone exposed or osteomyelitis 3; tendon or joint exposed 2; otherwise 1 | DF102; MOH (Wagner 3 includes abscess) | Mapping from form fields is a draft |
-| CR-09 | SINBAD 0–6 | Site (mid/hindfoot), Ischaemia (no palpable pulse), Neuropathy, Bacterial infection, Area ≥ 1 cm², Depth | MoC (minimum audit set), DF102 | — |
-| CR-10 | WIfI components | W, I (from ABI or pressures) and fI grades | DF102 | Combined stage **Blocked** (F-06) |
-| CR-11 | Stable / unstable foot | Wagner ≥ 3, infection ≥ 3, cellulitis > 2 cm, probe-to-bone, abscess, ≥ 2 SIRS, ischaemia → unstable, consider admission | MOH-EC | — |
-| CR-12 | Referral (patient segmentation and action guide) | See below | MoC p.91 | Verify against handbook §5 step 6 |
-| CR-13 | Suggested tests | Any ulcer: CBC, ESR, CRP, fasting glucose, HbA1c, renal function, wound culture. Ambiguous signs: procalcitonin. Probe-to-bone or osteomyelitis: bone culture. Severe infection: blood cultures. | Screening form after MOH Table 7, DF102 | — |
-| CR-14 | Follow-up interval | Infected ulcer: 48 h; active ulcer: weekly; otherwise per IWGDF risk interval | MoC | — |
-| CR-15 | Lab flags | DF102 ranges. Haemoglobin 13.8–17.2 g/dL (male), 12.1–15.1 (female). Creatinine 0.74–1.35 mg/dL (male), 0.59–1.04 (female) (MOH Table 7). Platelets 150–400 ×10⁹/L. | DF102, MOH Table 7 | Platelet upper limit open (400 vs 450) |
-| CR-16 | Clinical alerts | Current: escalations (unstable foot, SIRS, Charcot, severe ischaemia), osteomyelitis, ulcer present, abnormal labs | Screening form, MOH-EC | Full list **Blocked** (handbook §8, F-05) |
+| CR-01 | SIRS | Temperature > 38 or < 36 °C; heart rate > 90; respiratory rate > 20; WBC > 12 or < 4 ×10⁹/L. SIRS = 2 or more points. | §5 step 4 | SIRS without PaCO₂ and immature white cells (open point) |
+| CR-02 | LOPS per foot | Any monofilament site absent, or tuning fork absent | §5 step 1 | — |
+| CR-03 | PAD per foot | Monophasic Doppler; ABI < 0.90; ankle < 100 mmHg (prototype); TBI < 0.75; toe < 60; TcPO₂ < 55; or both pulses absent. History of PAD or revascularisation counts. ABI > 1.30 with no toe value: possible calcification, unreliable. | §5 step 2 | Ankle 100 and TcPO₂ 55 need sign-off |
+| CR-04 | Critical perfusion | ABI < 0.50, ankle < 50, toe < 30 or TcPO₂ < 25 | §5 step 2 | — |
+| CR-05 | Supporting flags | Deformity (claw, hammer, prominent MTH, hallux valgus, change in foot shape, previous Charcot); callus; dry skin / fissures / nail changes; previous ulcer; previous amputation; ESRD; CKD; active ulcer | §5 step 3 | — |
+| CR-06 | Charcot flag | 2 or more red flags including warmth, swelling or redness; or skin temperature difference > 2 °C | §5 step 4 | Needs sign-off |
+| CR-07 | IWGDF risk 0–3 | 0; LOPS or PAD → 1; both, or with deformity → 2; plus previous ulcer, amputation or ESRD → 3. Deformity alone stays 0. Sets the screening interval. | §5 step 5 | — |
+| CR-08 | MOH segment 0–4 | See the table below. Drives the referral. | §5 step 6 | "Any active ulcer" and "CKD without dialysis = moderate" need sign-off |
+| CR-09 | Infection severity 0–3 | 2+ local signs, abscess or confirmed osteomyelitis: SIRS → Severe; erythema ≥ 2 cm or deep → Moderate; else Mild. Otherwise Uninfected ("Antibiotics are not indicated"). "(O)" when bone is involved. | §6 | Abscess / bone infection counting as infected (open point) |
+| CR-10 | Wagner 1–5 | Whole-foot gangrene 5; any gangrene 4; abscess or confirmed osteomyelitis 3; exposed structure or probe-to-bone 2; else 1 | §6 | — |
+| CR-11 | SINBAD 0–6 | Site not forefoot; neither pulse present; LOPS; infection ≥ 1; area ≥ 1 cm²; reaches deeper structures. 0–2 mild, 3–4 moderate, 5–6 severe. | §6 | — |
+| CR-12 | WIfI stage 1–4 | W (1–3), I (worst of ABI / ankle / toe / TcPO₂ grades; estimated from Doppler and pulses when missing), fI (worst infection on that foot) → handbook stage table | §6 | Estimate and W shortcut need sign-off |
+| CR-13 | Healing, type, offloading, dressing | Not healing: ≥ 4 weeks of care and area shrank by less than half. Suggested type from LOPS / PAD. Offloading and dressing suggestions by first match. | §6 | — |
+| CR-14 | Suggested tests | Baseline panel (set in Clinic setup) for an active ulcer; procalcitonin; electrolytes; lactate, deep tissue culture, blood cultures; albumin; bone culture; plain X-ray; weight-bearing X-ray (Charcot); MRI (Charcot with a normal X-ray). Only active tests are suggested. | §7 | — |
+| CR-15 | Follow-up, disposition, teams | Follow-up from the segment (≥ 2: 1–2 months; 1: 3–6 months; 0: IWGDF interval). Disposition by first match (sepsis, deep infection, limb ischaemia → emergency …). Teams: surgery, vascular, infectious disease, diabetologist, wound care, orthotics, dietician, physiotherapy, nephrology, social worker. | §7 | — |
+| CR-16 | Lab reference checks | WBC 4.5–11; Hb 13.8–17.2 (M) / 12.1–15.1 (F); platelets 150–400 or 450; ESR < 20; CRP < 10; procalcitonin < 0.1; fasting glucose 70–100; HbA1c < 7; creatinine 0.74–1.35 (M) / 0.59–1.04 (F); lactate < 2; albumin 35–50 g/L | §7 | Platelet limit open |
+| CR-17 | Clinical alerts | Full handbook §8 list: 10 critical, 22 warning and 15 info alerts, plus the nurse's "Tell the practitioner now" | §8 | Every threshold needs sign-off |
 
-**CR-12 tiers.** The first tier that applies is used.
+**CR-08 MOH segments.** Checked from the top; the first match wins.
 
-| Tier | Criteria | Action |
+| Segment | Condition | Action |
 |---|---|---|
-| Acute foot attack | Systemically unwell; ulcer with ischaemia or gangrene; cellulitis or spreading infection; abscess or osteomyelitis | Directly to the emergency department |
-| Active foot disease | Any active ulcer (decision pending, Section 16.1), or suspected Charcot | Same-day referral to tertiary care |
-| Severe ischaemia (no higher tier) | — | Urgent vascular referral within 24 h |
-| High risk | Two of neuropathy / ischaemia / callus-deformity; or previous ulcer or amputation; or renal replacement therapy | Secondary care within 1 week |
-| Moderate risk | Neuropathy; non-critical ischaemia; deformity; or skin changes other than callus | Secondary care within 3 weeks |
-| Low risk | None of the above | Annual review |
+| 4 Acute foot attack | Active ulcer AND (any ulcer with moderate or severe infection, OR patient looks unwell, OR gangrene, abscess or confirmed bone infection, OR critical perfusion on that foot) | Send directly to the Emergency Department |
+| 3 Active foot disease | Active ulcer OR Charcot flag | Same-day referral to tertiary care. Recall in 1 to 2 months |
+| 2 High risk | LOPS and PAD; or (LOPS or PAD) with callus or deformity; or previous ulcer, amputation or ESRD | Secondary care within 1 week. Recall in 1 to 2 months |
+| 1 Moderate risk | LOPS, PAD, deformity, dry skin / fissures / nail changes, or CKD | Secondary care within 3 weeks. Recall in 3 to 6 months |
+| 0 Low risk | None of the above | Annual foot review and education |
 
 **Governance**
 - Rules are set by the clinic's senior doctor for general cases (UAT-18).
@@ -629,24 +630,36 @@ None of these is committed. Each needs a decision on scope, standard and owner.
 
 ### 16.1 Clinical decisions (clinical lead)
 
+These are the handbook's open points (section 10) plus items from UAT round 1. The demo follows the handbook's working choice for each.
+
 | ID | Question | Current demo behaviour |
 |---|---|---|
-| OD-01 | Platelet upper limit: 400 ×10⁹/L (DF102) or 450 (MOH Table 7)? | 400, with both shown |
-| OD-02 | Does a new, uninfected ulcer count as active foot disease? The MoC guide doesn't name it; the handbook treats any active ulcer as active foot disease. | Any active ulcer counts |
-| OD-03 | Thresholds of every clinical alert (handbook §10) | Pending F-05 |
-| OD-04 | Which risk system drives the plan: IWGDF 0–3 (MoC Table 1) and the MoC segmentation guide are both used (risk interval vs referral) | Both shown, each with its source |
-| OD-05 | SIRS list: 4 IWGDF items vs the longer MOH-EC list | 4 items |
-| OD-06 | Draft mappings from form fields to LOPS and Wagner | Marked "draft rule" |
-| OD-07 | Urea and eGFR reference ranges (not in the sources) | No flag shown |
+| OD-01 | Platelet upper limit: 400 ×10⁹/L (training deck) or 450 (MOH table)? | 400, with both shown |
+| OD-02 | Treating any active ulcer as "Active foot disease" (the MOH guide names chronic or infected ulcers only) | Any active ulcer counts |
+| OD-03 | Ankle pressure below 100 mmHg counted as PAD (MOH says below 50 in one chart, 50 to 99 in another) | 100 |
+| OD-04 | TcPO₂ below 55 mmHg as a PAD criterion | 55 |
+| OD-05 | Estimating the WIfI ischaemia grade from pulses and Doppler when no measurement exists | Estimated and flagged |
+| OD-06 | The Charcot flag rule (2 red flags including an inflammatory one, or > 2 °C difference) | As written |
+| OD-07 | What counts as "Acute foot attack" | As in CR-08 |
+| OD-08 | SIRS without PaCO₂ and immature white cells | 4 items |
+| OD-09 | The W grade shortcut using heel location and an area of 10 cm² | As written |
+| OD-10 | Every alert threshold: glucose 70 and 300, systolic BP 100, HbA1c 9, albumin 35, haemoglobin 10, eGFR 60, ESR 70, ulcer area 2 and 4 cm², pain 6 | As written |
+| OD-11 | Antibiotic regimen and duration tables (prototype's Clinical reference screen, not in the handbook) | Not built: needs the tables |
+| OD-12 | Counting an abscess or a confirmed bone infection as infected with fewer than 2 surface signs | Counted |
+| OD-13 | Chronic kidney disease without dialysis in the moderate segment (the MOH guide lists renal replacement therapy only, under high risk) | Counted as moderate |
+| OD-14 | Urea and eGFR reference ranges (not in the sources) | No flag shown |
+| OD-15 | Interface language: the handbook says English only; NFR-LOC-01 left Arabic to be confirmed | English only |
 
-### 16.2 Blocked: waiting for the Developer Handbook
+### 16.2 Developer Handbook items (resolved in version 0.2)
 
-| ID | Item | Handbook section |
+| ID | Item | Status |
 |---|---|---|
-| BL-01 | F-05: implement the alert list | §8 |
-| BL-02 | F-06: WIfI stage lookup table (needs clinical lead approval) | §6 |
-| BL-03 | F-04: verify the referral rule against the handbook | §5 step 6 |
-| BL-04 | Alert thresholds needing clinical sign-off | §10 |
+| BL-01 | F-05: the alert list (§8) | Built (CR-17) |
+| BL-02 | F-06: WIfI stage table (§6) | Built (CR-12); table approval is OD-05 / OD-09 |
+| BL-03 | F-04: referral rule checked against §5 step 6 | Built as the MOH segment (CR-08); handbook test cases 1 to 4 pass |
+| BL-04 | Alert thresholds needing clinical sign-off (§10) | Listed as OD-10 |
+
+Known gaps the handbook asks to build, not yet in the demo: marking the site of deformity and skin findings on the foot diagram; date and level details for each previous amputation beyond the level choice; a second sample clinic package (the eye clinic) to prove that a new clinic needs no engine change; rules stored as data evaluated by a generic evaluator (the demo keeps them as pure functions with a versioned threshold table).
 
 ### 16.3 Other open items
 
@@ -700,9 +713,9 @@ None of these is committed. Each needs a decision on scope, standard and owner.
 | F-01 Roles not enforced | FR-009 | Fixed in demo | Server enforcement |
 | F-02 "In review" set by anyone | FR-044–045 | Fixed | Server |
 | F-03 No nurse queue | FR-040 | Fixed | — |
-| F-04 Referral per MoC guide | FR-067, CR-12 | Fixed; to verify (BL-03) | — |
-| F-05 Alerts | FR-068, CR-16 | **Blocked** (BL-01) | — |
-| F-06 WIfI stage | FR-069, CR-10 | **Blocked** (BL-02) | — |
+| F-04 Referral per MoC guide | FR-067, CR-08 | Fixed; matches the handbook | — |
+| F-05 Alerts | FR-068, CR-17 | Shown | Approved thresholds |
+| F-06 WIfI stage | FR-069, CR-12 | Shown | Table approval |
 | F-07 Abscess | FR-064, CR-07, CR-08, CR-12 | Fixed | — |
 | F-08 Labs | FR-065, CR-15 | Fixed; OD-01 open | — |
 | F-09 Product name | Document title, all pages | Fixed | — |

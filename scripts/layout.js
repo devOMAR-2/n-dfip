@@ -130,7 +130,12 @@ const Layout = (() => {
 
   const keyOf = (name) => name.replace(/^([a-z])\.(left|right)\./, "$1.*.").replace(/^j\.\d\./, "j.#.").replace(/^r\.w\.\d\./, "r.w.#.");
   const pageOfKey = (key) => (key.startsWith("r.") ? "review" : "screening");
-  const movable = (key) => !key.includes("#");
+  // Handbook section 9: questions that feed the risk calculation are locked on (always shown,
+  // on the nurse page): vitals, both pulses, tuning fork, monofilament map, Charcot red flags and
+  // temperatures, previous ulcer, ulcer count and location.
+  const LOCKED = new Set(["a.temp", "a.hr", "a.rr", "a.sbp", "a.glucose", "d.*.dp", "d.*.pt", "c.*.vibration", "c.*.hallux", "c.*.mth1", "c.*.mth5", "h.*.flags", "h.*.temp", "i.*.ulcer", "j.count"]);
+  const locked = (key) => LOCKED.has(key) || key.startsWith("j.");
+  const movable = (key) => !key.includes("#") && !locked(key);
   const namesFor = (key) => (key.includes(".*.") ? ["left", "right"].map((s) => key.replace("*", s)) : [key]);
 
   // Built-in questions of a page (collapsed keys), with their schema entry and home section
@@ -142,7 +147,7 @@ const Layout = (() => {
       const key = keyOf(f.name);
       if (seen.has(key) || key.startsWith("_")) continue;
       seen.add(key);
-      out.push({ key, label: f.label, sub: f.sub ?? "", section: f.section, field: f, movable: movable(key) });
+      out.push({ key, label: f.label, sub: f.sub ?? "", section: f.section, field: f, movable: movable(key), locked: locked(key) });
     }
     return out;
   }
@@ -155,14 +160,14 @@ const Layout = (() => {
   // Where a built-in question shows under this config: { page, section, enabled }
   function placement(config, key) {
     const home = fieldOf(key);
-    const o = config.questions?.[key] ?? {};
+    const o = locked(key) ? {} : config.questions?.[key] ?? {};
     return { page: o.page ?? pageOfKey(key), section: o.section ?? home?.section ?? null, enabled: o.enabled !== false };
   }
 
   return {
     KEY, SECTIONS, PAGE_LABEL, FIXED, DEFAULT,
     state, versions, version, current, currentN, forRecord, publish, normalise, ConflictError,
-    keyOf, pageOfKey, movable, namesFor, catalogue, fieldOf, placement,
+    keyOf, pageOfKey, movable, locked, LOCKED, namesFor, catalogue, fieldOf, placement,
   };
 })();
 

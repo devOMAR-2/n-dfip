@@ -46,6 +46,11 @@ SUB_ICONS.update({
     "Medications": PILL,
     "Allergies": SUB_ICONS["Red flags"],
     "Tests": FLASK,
+    "MOH segment": SUB_ICONS["Indices"],
+    "Charcot foot": SUB_ICONS["Red flags"],
+    "Serious infection": SUB_ICONS["Red flags"],
+    "Where the patient goes now": SEND,
+    "Teams to involve": SUB_ICONS["Patient details"],
 })
 
 
@@ -96,7 +101,7 @@ begin("recommendations")
 s2 = '\n\n'.join([
     sub("Neuropathy & circulation", '<p class="field-hint">Draft rules: confirm or override each foot. The risk category is calculated from your decisions.</p>\n<div class="rec-grid" data-recs="foot"></div>'),
     sub("Risk category", '<div class="rec-grid" data-recs="risk"></div>'),
-    sub("Escalation", '<div class="rec-grid" data-recs="escalation"></div>'),
+    sub("MOH segment", '<p class="field-hint">Recomputed from the findings on every change. It drives the suggested referral; it is never typed by hand.</p>\n<div class="segment-card" data-segment></div>'),
 ])
 
 # ---------- 3 Wound evaluation ----------
@@ -112,12 +117,27 @@ def wound_card(n):
   <legend class="foot-card__title">Ulcer {n} · <span data-wound-location></span></legend>
 {ind(q_choice("Onset / duration", f"{p}.onset", ONSET, error="Choose the onset."), 2)}
 {ind(q_choice("Type / cause", f"{p}.type", WTYPE, error="Choose the ulcer type."), 2)}
+{ind(q_choice("Progression", f"{p}.progression", [("improving", "Improving"), ("static", "Static"), ("worsening", "Worsening")], required=False), 2)}
   <div class="q-row">
 {ind(q_number("Length", f"{p}.length", "cm", min_=0.1, max_=40, step="0.1", error="Enter the length (0.1–40 cm)."), 4)}
 {ind(q_number("Width", f"{p}.width", "cm", min_=0.1, max_=40, step="0.1", error="Enter the width (0.1–40 cm)."), 4)}
 {ind(q_number("Depth", f"{p}.depth", "cm", min_=0, max_=10, step="0.1", error="Enter the depth (0–10 cm)."), 4)}
   </div>
-{ind(q_choice("Tissue bed", f"{p}.tissue", [("granulation", "Granulation"), ("slough", "Slough"), ("necrosis", "Necrosis / eschar")], kind="checkbox", error="Choose the tissue types present."), 2)}
+  <div class="q-row">
+{ind(q_number("Previous area", f"{p}.prevArea", "cm²", required=False, min_=0, max_=1600, step="0.1", hint="From the last visit, to track healing."), 4)}
+{ind(q_number("Weeks of standard care", f"{p}.weeksCare", "weeks", required=False, min_=0, max_=520, step="1"), 4)}
+  </div>
+{ind(q_choice("Tissue bed", f"{p}.tissue", [("granulation", "Granulation"), ("slough", "Slough"), ("necrosis", "Necrosis / eschar"), ("epithelialising", "Epithelialising")], kind="checkbox", error="Choose the tissue types present."), 2)}
+  <div class="q-row q-row--4">
+{ind(q_number("Granulation", f"{p}.share.granulation", "%", required=False, min_=0, max_=100, step="5"), 4)}
+{ind(q_number("Slough", f"{p}.share.slough", "%", required=False, min_=0, max_=100, step="5"), 4)}
+{ind(q_number("Necrosis", f"{p}.share.necrosis", "%", required=False, min_=0, max_=100, step="5"), 4)}
+{ind(q_number("Epithelialising", f"{p}.share.epithelialising", "%", required=False, min_=0, max_=100, step="5"), 4)}
+  </div>
+{ind(q_choice("Exudate volume", f"{p}.exudate", [("none", "None"), ("low", "Low"), ("moderate", "Moderate"), ("high", "High")], required=False), 2)}
+{ind(q_choice("Exudate type", f"{p}.exudateType", [("serous", "Serous"), ("sanguineous", "Sanguineous"), ("purulent", "Purulent")], required=False), 2)}
+{ind(q_choice("Exudate viscosity", f"{p}.viscosity", [("thin", "Thin"), ("thick", "Thick")], required=False), 2)}
+{ind(q_choice("Odour", f"{p}.odour", [("yes", "Yes"), ("no", "No")], required=False), 2)}
   <div class="q">
     <label class="label" for="f-r-w-{n}-pain">Pain score <output class="range-value" for="f-r-w-{n}-pain" data-range-output>0</output><span class="range-max">/ 10</span></label>
     <input class="range" id="f-r-w-{n}-pain" name="{p}.pain" type="range" min="0" max="10" step="1" value="0" />
@@ -128,18 +148,26 @@ def wound_card(n):
 {ind(q_choice("Exposed structure", f"{p}.exposed", [("tendon", "Tendon"), ("joint", "Joint"), ("bone", "Bone"), ("none", "None")], kind="checkbox", exclusive="none", error="Choose exposed structures, or “None”."), 2)}
   <!-- assumed: gangrene is not in the spec but Wagner and WIfI need it -->
 {ind(q_choice("Abscess", f"{p}.abscess", [("yes", "Yes"), ("no", "No")], error="Record whether there is an abscess.", hint="MOH: Wagner 3, moderate infection and acute foot attack all include abscess."), 2)}
-{ind(q_choice("Gangrene", f"{p}.gangrene", [("none", "None"), ("localized", "Localized (toe / forefoot)"), ("extensive", "Extensive")], error="Record gangrene."), 2)}
+{ind(q_choice("Gangrene", f"{p}.gangrene", [("none", "None"), ("digits", "Limited to digits"), ("forefoot", "Forefoot or midfoot"), ("whole", "Whole foot")], error="Record gangrene."), 2)}
 {ind(q_choice("Osteomyelitis", f"{p}.osteomyelitis", [("no", "Not suspected"), ("suspected", "Suspected"), ("confirmed", "Confirmed")], error="Record osteomyelitis status."), 2)}
+  <div class="wound-hints" data-wound-hints="{n}"></div>
   <div class="rec-grid" data-recs="wound-{n}"></div>
 </fieldset>'''
 
 
+S3_CHARCOT = sub("Charcot foot", '\n'.join([
+    '<p class="field-hint" data-charcot-reason></p>',
+    q_choice("Eichenholtz stage", "r.charcot.stage", [("0", "0"), ("I", "I"), ("II", "II"), ("III", "III")], required=False),
+    q_choice("X-ray result", "r.charcot.xray", [("not-done", "Not done yet"), ("normal", "Normal"), ("abnormal", "Abnormal")], required=False),
+]), reveal="charcot")
 s3 = sub("Ulcers", f'''<p class="field-hint" data-no-wounds hidden>No ulcers recorded by the nurse. Nothing to evaluate.</p>
 <div class="wound-list">
 {ind(wound_card(1), 2)}
 {ind(wound_card(2), 2)}
 {ind(wound_card(3), 2)}
 </div>''')
+
+s3 = s3 + '\n\n' + S3_CHARCOT
 
 # ---------- 4 Labs ----------
 begin("labs")
@@ -192,6 +220,12 @@ s5 = '\n\n'.join([
 begin("infection")
 s6 = '\n\n'.join([
     sub("Infection status", '<div class="infection-summary" data-infection-summary></div>\n<div class="callout callout-warning" data-allergies hidden>\n  ' + WARN_SVG + '\n  <div><strong>Allergies</strong><p data-allergy-text></p></div>\n</div>'),
+    sub("Serious infection", q_choice("Indicators of serious infection", "r.inf.serious", [
+        ("spreading", "Rapidly spreading cellulitis or lymphangitis"), ("crepitus", "Crepitus"), ("bullae", "Bullae"),
+        ("discoloration", "Skin discoloration"), ("necrosis", "Necrosis or gangrene"), ("ecchymoses", "Ecchymoses or petechiae"),
+        ("new-pain", "New localised pain"), ("systemic", "Fever, chills, hypotension or confusion"), ("ischaemia", "Severe foot ischaemia"),
+        ("iv", "Needs IV antibiotics"), ("surgery", "Needs urgent surgery"), ("deteriorating", "Deteriorating despite therapy"), ("none", "None"),
+    ], kind="checkbox", exclusive="none", required=False)),
     sub("Antibiotics", '\n'.join([
         '<p class="field-hint" data-antibiotic-hint></p>',
         q_choice("Antibiotic plan", "r.inf.antibiotics", [("none", "No antibiotics"), ("oral", "Oral empiric"), ("iv", "IV / parenteral")], error="Choose the antibiotic plan."),
@@ -257,6 +291,8 @@ s9 = '\n\n'.join([
 # ---------- 10 Referral ----------
 begin("referral")
 s10 = '\n\n'.join([
+    sub("Where the patient goes now", '<div class="suggestion" data-disposition></div>'),
+    sub("Teams to involve", '<ul class="team-list" data-teams></ul>'),
     sub("System suggestion", f'''<div class="suggestion" data-ref-suggestion>
   <div data-ref-suggestion-text></div>
   <button type="button" class="btn btn-outline" data-apply-referral>Apply suggestion</button>
@@ -279,7 +315,7 @@ s11 = '\n\n'.join([
     sub("Footwear & offloading", text_input("Footwear / offloading plan", "r.plan.offloading", optional=True)),
     sub("Follow-up", '\n'.join([
         '<p class="field-hint" data-followup-suggestion></p>',
-        q_choice("Follow-up interval", "r.plan.followup", [("48h", "48 hours"), ("1w", "1 week"), ("2w", "2 weeks"), ("1m", "1 month"), ("1-3m", "1–3 months"), ("3-6m", "3–6 months"), ("6-12m", "6–12 months"), ("12m", "12 months")], error="Choose the follow-up interval."),
+        q_choice("Follow-up interval", "r.plan.followup", [("48h", "48 hours"), ("1w", "1 week"), ("2w", "2 weeks"), ("1m", "1 month"), ("1-2m", "1–2 months"), ("1-3m", "1–3 months"), ("3-6m", "3–6 months"), ("6-12m", "6–12 months"), ("12m", "12 months")], error="Choose the follow-up interval."),
         q_choice("Patient / carer", "r.plan.safetynet", [("understood", "Understands the plan and safety-net advice given")], kind="checkbox", error="Confirm the safety-net advice."),
     ])),
 ])

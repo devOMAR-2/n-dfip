@@ -20,6 +20,54 @@ const ReviewSchema = {
  },
  "fields": [
   {
+   "name": "r.charcot.stage",
+   "label": "Eichenholtz stage",
+   "type": "radio",
+   "options": [
+    [
+     "0",
+     "0"
+    ],
+    [
+     "I",
+     "I"
+    ],
+    [
+     "II",
+     "II"
+    ],
+    [
+     "III",
+     "III"
+    ]
+   ],
+   "required": false,
+   "section": "wound",
+   "sub": "Charcot foot"
+  },
+  {
+   "name": "r.charcot.xray",
+   "label": "X-ray result",
+   "type": "radio",
+   "options": [
+    [
+     "not-done",
+     "Not done yet"
+    ],
+    [
+     "normal",
+     "Normal"
+    ],
+    [
+     "abnormal",
+     "Abnormal"
+    ]
+   ],
+   "required": false,
+   "section": "wound",
+   "sub": "Charcot foot"
+  },
+  {
    "name": "r.w.1.onset",
    "label": "Onset / duration",
    "type": "radio",
@@ -84,6 +132,28 @@ const ReviewSchema = {
    "sub": "Ulcers"
   },
   {
+   "name": "r.w.1.progression",
+   "label": "Progression",
+   "type": "radio",
+   "options": [
+    [
+     "improving",
+     "Improving"
+    ],
+    [
+     "static",
+     "Static"
+    ],
+    [
+     "worsening",
+     "Worsening"
+    ]
+   ],
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
    "name": "r.w.1.length",
    "label": "Length",
    "type": "number",
@@ -120,6 +190,30 @@ const ReviewSchema = {
    "sub": "Ulcers"
   },
   {
+   "name": "r.w.1.prevArea",
+   "label": "Previous area",
+   "type": "number",
+   "unit": "cm²",
+   "min": 0,
+   "max": 1600,
+   "step": "0.1",
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.1.weeksCare",
+   "label": "Weeks of standard care",
+   "type": "number",
+   "unit": "weeks",
+   "min": 0,
+   "max": 520,
+   "step": "1",
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
    "name": "r.w.1.tissue",
    "label": "Tissue bed",
    "type": "checkbox",
@@ -135,9 +229,145 @@ const ReviewSchema = {
     [
      "necrosis",
      "Necrosis / eschar"
+    ],
+    [
+     "epithelialising",
+     "Epithelialising"
     ]
    ],
    "required": true,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.1.share.granulation",
+   "label": "Granulation",
+   "type": "number",
+   "unit": "%",
+   "min": 0,
+   "max": 100,
+   "step": "5",
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.1.share.slough",
+   "label": "Slough",
+   "type": "number",
+   "unit": "%",
+   "min": 0,
+   "max": 100,
+   "step": "5",
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.1.share.necrosis",
+   "label": "Necrosis",
+   "type": "number",
+   "unit": "%",
+   "min": 0,
+   "max": 100,
+   "step": "5",
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.1.share.epithelialising",
+   "label": "Epithelialising",
+   "type": "number",
+   "unit": "%",
+   "min": 0,
+   "max": 100,
+   "step": "5",
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.1.exudate",
+   "label": "Exudate volume",
+   "type": "radio",
+   "options": [
+    [
+     "none",
+     "None"
+    ],
+    [
+     "low",
+     "Low"
+    ],
+    [
+     "moderate",
+     "Moderate"
+    ],
+    [
+     "high",
+     "High"
+    ]
+   ],
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.1.exudateType",
+   "label": "Exudate type",
+   "type": "radio",
+   "options": [
+    [
+     "serous",
+     "Serous"
+    ],
+    [
+     "sanguineous",
+     "Sanguineous"
+    ],
+    [
+     "purulent",
+     "Purulent"
+    ]
+   ],
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.1.viscosity",
+   "label": "Exudate viscosity",
+   "type": "radio",
+   "options": [
+    [
+     "thin",
+     "Thin"
+    ],
+    [
+     "thick",
+     "Thick"
+    ]
+   ],
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.1.odour",
+   "label": "Odour",
+   "type": "radio",
+   "options": [
+    [
+     "yes",
+     "Yes"
+    ],
+    [
+     "no",
+     "No"
+    ]
+   ],
+   "required": false,
    "section": "wound",
    "sub": "Ulcers"
   },
@@ -259,12 +489,16 @@ const ReviewSchema = {
      "None"
     ],
     [
-     "localized",
-     "Localized (toe / forefoot)"
+     "digits",
+     "Limited to digits"
     ],
     [
-     "extensive",
-     "Extensive"
+     "forefoot",
+     "Forefoot or midfoot"
+    ],
+    [
+     "whole",
+     "Whole foot"
     ]
    ],
    "required": true,
@@ -358,6 +592,28 @@ const ReviewSchema = {
    "sub": "Ulcers"
   },
   {
+   "name": "r.w.2.progression",
+   "label": "Progression",
+   "type": "radio",
+   "options": [
+    [
+     "improving",
+     "Improving"
+    ],
+    [
+     "static",
+     "Static"
+    ],
+    [
+     "worsening",
+     "Worsening"
+    ]
+   ],
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
    "name": "r.w.2.length",
    "label": "Length",
    "type": "number",
@@ -394,6 +650,30 @@ const ReviewSchema = {
    "sub": "Ulcers"
   },
   {
+   "name": "r.w.2.prevArea",
+   "label": "Previous area",
+   "type": "number",
+   "unit": "cm²",
+   "min": 0,
+   "max": 1600,
+   "step": "0.1",
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.2.weeksCare",
+   "label": "Weeks of standard care",
+   "type": "number",
+   "unit": "weeks",
+   "min": 0,
+   "max": 520,
+   "step": "1",
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
    "name": "r.w.2.tissue",
    "label": "Tissue bed",
    "type": "checkbox",
@@ -409,9 +689,145 @@ const ReviewSchema = {
     [
      "necrosis",
      "Necrosis / eschar"
+    ],
+    [
+     "epithelialising",
+     "Epithelialising"
     ]
    ],
    "required": true,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.2.share.granulation",
+   "label": "Granulation",
+   "type": "number",
+   "unit": "%",
+   "min": 0,
+   "max": 100,
+   "step": "5",
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.2.share.slough",
+   "label": "Slough",
+   "type": "number",
+   "unit": "%",
+   "min": 0,
+   "max": 100,
+   "step": "5",
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.2.share.necrosis",
+   "label": "Necrosis",
+   "type": "number",
+   "unit": "%",
+   "min": 0,
+   "max": 100,
+   "step": "5",
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.2.share.epithelialising",
+   "label": "Epithelialising",
+   "type": "number",
+   "unit": "%",
+   "min": 0,
+   "max": 100,
+   "step": "5",
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.2.exudate",
+   "label": "Exudate volume",
+   "type": "radio",
+   "options": [
+    [
+     "none",
+     "None"
+    ],
+    [
+     "low",
+     "Low"
+    ],
+    [
+     "moderate",
+     "Moderate"
+    ],
+    [
+     "high",
+     "High"
+    ]
+   ],
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.2.exudateType",
+   "label": "Exudate type",
+   "type": "radio",
+   "options": [
+    [
+     "serous",
+     "Serous"
+    ],
+    [
+     "sanguineous",
+     "Sanguineous"
+    ],
+    [
+     "purulent",
+     "Purulent"
+    ]
+   ],
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.2.viscosity",
+   "label": "Exudate viscosity",
+   "type": "radio",
+   "options": [
+    [
+     "thin",
+     "Thin"
+    ],
+    [
+     "thick",
+     "Thick"
+    ]
+   ],
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.2.odour",
+   "label": "Odour",
+   "type": "radio",
+   "options": [
+    [
+     "yes",
+     "Yes"
+    ],
+    [
+     "no",
+     "No"
+    ]
+   ],
+   "required": false,
    "section": "wound",
    "sub": "Ulcers"
   },
@@ -533,12 +949,16 @@ const ReviewSchema = {
      "None"
     ],
     [
-     "localized",
-     "Localized (toe / forefoot)"
+     "digits",
+     "Limited to digits"
     ],
     [
-     "extensive",
-     "Extensive"
+     "forefoot",
+     "Forefoot or midfoot"
+    ],
+    [
+     "whole",
+     "Whole foot"
     ]
    ],
    "required": true,
@@ -632,6 +1052,28 @@ const ReviewSchema = {
    "sub": "Ulcers"
   },
   {
+   "name": "r.w.3.progression",
+   "label": "Progression",
+   "type": "radio",
+   "options": [
+    [
+     "improving",
+     "Improving"
+    ],
+    [
+     "static",
+     "Static"
+    ],
+    [
+     "worsening",
+     "Worsening"
+    ]
+   ],
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
    "name": "r.w.3.length",
    "label": "Length",
    "type": "number",
@@ -668,6 +1110,30 @@ const ReviewSchema = {
    "sub": "Ulcers"
   },
   {
+   "name": "r.w.3.prevArea",
+   "label": "Previous area",
+   "type": "number",
+   "unit": "cm²",
+   "min": 0,
+   "max": 1600,
+   "step": "0.1",
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.3.weeksCare",
+   "label": "Weeks of standard care",
+   "type": "number",
+   "unit": "weeks",
+   "min": 0,
+   "max": 520,
+   "step": "1",
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
    "name": "r.w.3.tissue",
    "label": "Tissue bed",
    "type": "checkbox",
@@ -683,9 +1149,145 @@ const ReviewSchema = {
     [
      "necrosis",
      "Necrosis / eschar"
+    ],
+    [
+     "epithelialising",
+     "Epithelialising"
     ]
    ],
    "required": true,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.3.share.granulation",
+   "label": "Granulation",
+   "type": "number",
+   "unit": "%",
+   "min": 0,
+   "max": 100,
+   "step": "5",
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.3.share.slough",
+   "label": "Slough",
+   "type": "number",
+   "unit": "%",
+   "min": 0,
+   "max": 100,
+   "step": "5",
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.3.share.necrosis",
+   "label": "Necrosis",
+   "type": "number",
+   "unit": "%",
+   "min": 0,
+   "max": 100,
+   "step": "5",
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.3.share.epithelialising",
+   "label": "Epithelialising",
+   "type": "number",
+   "unit": "%",
+   "min": 0,
+   "max": 100,
+   "step": "5",
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.3.exudate",
+   "label": "Exudate volume",
+   "type": "radio",
+   "options": [
+    [
+     "none",
+     "None"
+    ],
+    [
+     "low",
+     "Low"
+    ],
+    [
+     "moderate",
+     "Moderate"
+    ],
+    [
+     "high",
+     "High"
+    ]
+   ],
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.3.exudateType",
+   "label": "Exudate type",
+   "type": "radio",
+   "options": [
+    [
+     "serous",
+     "Serous"
+    ],
+    [
+     "sanguineous",
+     "Sanguineous"
+    ],
+    [
+     "purulent",
+     "Purulent"
+    ]
+   ],
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.3.viscosity",
+   "label": "Exudate viscosity",
+   "type": "radio",
+   "options": [
+    [
+     "thin",
+     "Thin"
+    ],
+    [
+     "thick",
+     "Thick"
+    ]
+   ],
+   "required": false,
+   "section": "wound",
+   "sub": "Ulcers"
+  },
+  {
+   "name": "r.w.3.odour",
+   "label": "Odour",
+   "type": "radio",
+   "options": [
+    [
+     "yes",
+     "Yes"
+    ],
+    [
+     "no",
+     "No"
+    ]
+   ],
+   "required": false,
    "section": "wound",
    "sub": "Ulcers"
   },
@@ -807,12 +1409,16 @@ const ReviewSchema = {
      "None"
     ],
     [
-     "localized",
-     "Localized (toe / forefoot)"
+     "digits",
+     "Limited to digits"
     ],
     [
-     "extensive",
-     "Extensive"
+     "forefoot",
+     "Forefoot or midfoot"
+    ],
+    [
+     "whole",
+     "Whole foot"
     ]
    ],
    "required": true,
@@ -886,6 +1492,68 @@ const ReviewSchema = {
    "required": false,
    "section": "pad",
    "sub": "Assessment"
+  },
+  {
+   "name": "r.inf.serious",
+   "label": "Indicators of serious infection",
+   "type": "checkbox",
+   "options": [
+    [
+     "spreading",
+     "Rapidly spreading cellulitis or lymphangitis"
+    ],
+    [
+     "crepitus",
+     "Crepitus"
+    ],
+    [
+     "bullae",
+     "Bullae"
+    ],
+    [
+     "discoloration",
+     "Skin discoloration"
+    ],
+    [
+     "necrosis",
+     "Necrosis or gangrene"
+    ],
+    [
+     "ecchymoses",
+     "Ecchymoses or petechiae"
+    ],
+    [
+     "new-pain",
+     "New localised pain"
+    ],
+    [
+     "systemic",
+     "Fever, chills, hypotension or confusion"
+    ],
+    [
+     "ischaemia",
+     "Severe foot ischaemia"
+    ],
+    [
+     "iv",
+     "Needs IV antibiotics"
+    ],
+    [
+     "surgery",
+     "Needs urgent surgery"
+    ],
+    [
+     "deteriorating",
+     "Deteriorating despite therapy"
+    ],
+    [
+     "none",
+     "None"
+    ]
+   ],
+   "required": false,
+   "section": "infection",
+   "sub": "Serious infection"
   },
   {
    "name": "r.inf.antibiotics",
@@ -1313,6 +1981,10 @@ const ReviewSchema = {
     [
      "1m",
      "1 month"
+    ],
+    [
+     "1-2m",
+     "1–2 months"
     ],
     [
      "1-3m",
