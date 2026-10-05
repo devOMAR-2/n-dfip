@@ -4,23 +4,40 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Practitioner Review</title>
+    <title>Practitioner Review · N-DFIP</title>
     <link rel="stylesheet" href="./styles/shared.css" />
+    <script src="./scripts/db.js"></script>
     <script src="./scripts/auth.js"></script>
+    <script src="./scripts/staff.js"></script>
+    <script src="./scripts/access.js"></script>
+    <script src="./scripts/org.js"></script>
+    <script src="./scripts/audit.js"></script>
+    <script src="./scripts/privacy.js"></script>
+    <script src="./scripts/history-seed.js"></script>
+    <script src="./scripts/referrals.js"></script>
+    <script src="./scripts/tests.js"></script>
+    <script src="./scripts/session.js"></script>
+    <script src="./scripts/privacy-ui.js"></script>
+    <script src="./scripts/notifications.js"></script>
     <script>
       // Not signed in: back to the sign-in page
       if (!Auth.getSessionId()) window.location.replace(Auth.LOGIN_PAGE);
       // Needs a screening id: review.html?id=…
       else if (!new URLSearchParams(location.search).get("id")) window.location.replace("./diabetic-foot.html");
+      // Role check (F-01): shows a "no access" page instead of the content
+      Access.guardPage(["review.queue"], "the practitioner review");
     </script>
   </head>
   <body>
     <header class="app-header">
-      <a class="app-title" href="./home.html">The Clinical Platform</a>
+      <a class="app-title" href="./home.html" aria-label="N-DFIP, National Diabetic Foot Intelligence Platform, home"><span class="app-title__short">N-DFIP</span><span class="app-title__full">National Diabetic Foot Intelligence Platform</span></a>
 
       <nav class="app-nav" aria-label="Main">
         <a href="./home.html">Home</a>
+        <a href="./patients.html">Patients</a>
+        <a href="./referrals.html">Referrals</a>
         <a href="./dashboard.html">Dashboard</a>
+        <a href="./audit.html">Audit log</a>
         <a href="./settings.html">Settings</a>
       </nav>
 
@@ -108,7 +125,7 @@
       </section>
 
       <form class="screening-form" id="review-form" novalidate>
-        <details class="form-section" data-section="1" open>
+        <details class="form-section" data-section="1" data-key="findings" open>
           <summary class="form-section__summary">
             <span class="form-section__letter" aria-hidden="true">1</span>
             <span class="form-section__title"><span class="sr-only">Section 1: </span>Screening Findings</span>
@@ -124,7 +141,7 @@
           </div>
         </details>
 
-        <details class="form-section" data-section="2" open>
+        <details class="form-section" data-section="2" data-key="recommendations" open>
           <summary class="form-section__summary">
             <span class="form-section__letter" aria-hidden="true">2</span>
             <span class="form-section__title"><span class="sr-only">Section 2: </span>System Recommendations</span>
@@ -150,7 +167,7 @@
           </div>
         </details>
 
-        <details class="form-section" data-section="3">
+        <details class="form-section" data-section="3" data-key="wound">
           <summary class="form-section__summary">
             <span class="form-section__letter" aria-hidden="true">3</span>
             <span class="form-section__title"><span class="sr-only">Section 3: </span>Wound Evaluation</span>
@@ -291,6 +308,18 @@
                     </p>
                   </fieldset>
                   <!-- assumed: gangrene is not in the spec but Wagner and WIfI need it -->
+                  <fieldset class="q" data-required="radio" data-error="Record whether there is an abscess.">
+                    <legend class="label">Abscess</legend>
+                    <p class="field-hint">MOH: Wagner 3, moderate infection and acute foot attack all include abscess.</p>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="r.w.1.abscess" value="yes" /><span>Yes</span></label>
+                      <label class="chip"><input type="radio" name="r.w.1.abscess" value="no" /><span>No</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
                   <fieldset class="q" data-required="radio" data-error="Record gangrene.">
                     <legend class="label">Gangrene</legend>
                     <div class="chips">
@@ -446,6 +475,18 @@
                     </p>
                   </fieldset>
                   <!-- assumed: gangrene is not in the spec but Wagner and WIfI need it -->
+                  <fieldset class="q" data-required="radio" data-error="Record whether there is an abscess.">
+                    <legend class="label">Abscess</legend>
+                    <p class="field-hint">MOH: Wagner 3, moderate infection and acute foot attack all include abscess.</p>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="r.w.2.abscess" value="yes" /><span>Yes</span></label>
+                      <label class="chip"><input type="radio" name="r.w.2.abscess" value="no" /><span>No</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
                   <fieldset class="q" data-required="radio" data-error="Record gangrene.">
                     <legend class="label">Gangrene</legend>
                     <div class="chips">
@@ -601,6 +642,18 @@
                     </p>
                   </fieldset>
                   <!-- assumed: gangrene is not in the spec but Wagner and WIfI need it -->
+                  <fieldset class="q" data-required="radio" data-error="Record whether there is an abscess.">
+                    <legend class="label">Abscess</legend>
+                    <p class="field-hint">MOH: Wagner 3, moderate infection and acute foot attack all include abscess.</p>
+                    <div class="chips">
+                      <label class="chip"><input type="radio" name="r.w.3.abscess" value="yes" /><span>Yes</span></label>
+                      <label class="chip"><input type="radio" name="r.w.3.abscess" value="no" /><span>No</span></label>
+                    </div>
+                    <p class="field-error" hidden>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                      <span></span>
+                    </p>
+                  </fieldset>
                   <fieldset class="q" data-required="radio" data-error="Record gangrene.">
                     <legend class="label">Gangrene</legend>
                     <div class="chips">
@@ -632,7 +685,7 @@
           </div>
         </details>
 
-        <details class="form-section" data-section="4">
+        <details class="form-section" data-section="4" data-key="labs">
           <summary class="form-section__summary">
             <span class="form-section__letter" aria-hidden="true">4</span>
             <span class="form-section__title"><span class="sr-only">Section 4: </span>Lab Results</span>
@@ -648,7 +701,7 @@
 
             <section class="subsection">
               <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2" /><path d="M8.5 2h7" /><path d="M7 16h10" /></svg>Haematology &amp; chemistry</h3>
-              <p class="field-hint">Reference ranges from the Diabetic Foot 102 teaching deck. WBC feeds the SIRS count.</p>
+              <p class="field-hint">Reference ranges from the Diabetic Foot 102 deck and MOH Table 7; sex-specific ranges use the patient record. WBC feeds the SIRS count.</p>
               <div class="lab-grid">
                 <div class="q lab-field" data-lab="wbc">
                   <label class="label" for="f-r-lab-wbc">WBC <span class="badge lab-flag" data-lab-flag hidden></span></label>
@@ -658,13 +711,21 @@
                   </div>
                   <p class="field-hint">Reference 4.5–11</p>
                 </div>
+                <div class="q lab-field" data-lab="hb">
+                  <label class="label" for="f-r-lab-hb">Haemoglobin <span class="badge lab-flag" data-lab-flag hidden></span></label>
+                  <div class="input-unit">
+                    <input class="input" id="f-r-lab-hb" name="r.lab.hb" type="number" inputmode="decimal" step="any" min="0" />
+                    <span class="input-unit__suffix">g/dL</span>
+                  </div>
+                  <p class="field-hint">Reference male 13.8–17.2, female 12.1–15.1 (MOH Table 7)</p>
+                </div>
                 <div class="q lab-field" data-lab="platelets">
                   <label class="label" for="f-r-lab-platelets">Platelets <span class="badge lab-flag" data-lab-flag hidden></span></label>
                   <div class="input-unit">
                     <input class="input" id="f-r-lab-platelets" name="r.lab.platelets" type="number" inputmode="decimal" step="any" min="0" />
                     <span class="input-unit__suffix">×10⁹/L</span>
                   </div>
-                  <p class="field-hint">Reference 150–400</p>
+                  <p class="field-hint">Reference 150–400 (DF102; MOH Table 7 gives 450 as the upper limit)</p>
                 </div>
                 <div class="q lab-field" data-lab="fbg">
                   <label class="label" for="f-r-lab-fbg">Fasting glucose <span class="badge lab-flag" data-lab-flag hidden></span></label>
@@ -682,13 +743,29 @@
                   </div>
                   <p class="field-hint">Reference target &lt; 7</p>
                 </div>
+                <div class="q lab-field" data-lab="urea">
+                  <label class="label" for="f-r-lab-urea">Urea <span class="badge lab-flag" data-lab-flag hidden></span></label>
+                  <div class="input-unit">
+                    <input class="input" id="f-r-lab-urea" name="r.lab.urea" type="number" inputmode="decimal" step="any" min="0" />
+                    <span class="input-unit__suffix">mg/dL</span>
+                  </div>
+                  <p class="field-hint">No reference range in the source documents</p>
+                </div>
                 <div class="q lab-field" data-lab="creatinine">
                   <label class="label" for="f-r-lab-creatinine">Creatinine <span class="badge lab-flag" data-lab-flag hidden></span></label>
                   <div class="input-unit">
                     <input class="input" id="f-r-lab-creatinine" name="r.lab.creatinine" type="number" inputmode="decimal" step="any" min="0" />
-                    <span class="input-unit__suffix">µmol/L</span>
+                    <span class="input-unit__suffix">mg/dL</span>
                   </div>
-                  <p class="field-hint">No reference range in source</p>
+                  <p class="field-hint">Reference male 0.74–1.35, female 0.59–1.04 (MOH Table 7)</p>
+                </div>
+                <div class="q lab-field" data-lab="egfr">
+                  <label class="label" for="f-r-lab-egfr">eGFR <span class="badge lab-flag" data-lab-flag hidden></span></label>
+                  <div class="input-unit">
+                    <input class="input" id="f-r-lab-egfr" name="r.lab.egfr" type="number" inputmode="decimal" step="any" min="0" />
+                    <span class="input-unit__suffix">mL/min/1.73 m²</span>
+                  </div>
+                  <p class="field-hint">No reference range in the source documents</p>
                 </div>
                 <div class="q lab-field" data-lab="crp">
                   <label class="label" for="f-r-lab-crp">CRP <span class="badge lab-flag" data-lab-flag hidden></span></label>
@@ -747,7 +824,7 @@
           </div>
         </details>
 
-        <details class="form-section" data-section="5">
+        <details class="form-section" data-section="5" data-key="pad">
           <summary class="form-section__summary">
             <span class="form-section__letter" aria-hidden="true">5</span>
             <span class="form-section__title"><span class="sr-only">Section 5: </span>Peripheral Arterial Disease</span>
@@ -786,7 +863,7 @@
           </div>
         </details>
 
-        <details class="form-section" data-section="6">
+        <details class="form-section" data-section="6" data-key="infection">
           <summary class="form-section__summary">
             <span class="form-section__letter" aria-hidden="true">6</span>
             <span class="form-section__title"><span class="sr-only">Section 6: </span>Infection Management</span>
@@ -864,10 +941,30 @@
           </div>
         </details>
 
-        <details class="form-section" data-section="7">
+        <details class="form-section" data-section="7" data-key="medications">
           <summary class="form-section__summary">
             <span class="form-section__letter" aria-hidden="true">7</span>
-            <span class="form-section__title"><span class="sr-only">Section 7: </span>Adjunctive Therapies</span>
+            <span class="form-section__title"><span class="sr-only">Section 7: </span>Medications</span>
+            <span class="badge form-section__status" data-status></span>
+            <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </summary>
+          <div class="form-section__body">
+            <section class="subsection">
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" /><path d="m8.5 8.5 7 7" /></svg>Medications</h3>
+              <div class="allergy-box" data-med-allergies></div>
+              <div class="q">
+                <label class="label" for="f-r-med-text">Medication, dose and instructions <span class="label__optional">(optional)</span></label>
+                <p class="field-hint">Free text, one medication per line. Appears in the clinical note and the patient file.</p>
+                <textarea class="input textarea" id="f-r-med-text" name="r.med.text" rows="5"></textarea>
+              </div>
+            </section>
+          </div>
+        </details>
+
+        <details class="form-section" data-section="8" data-key="adjunct">
+          <summary class="form-section__summary">
+            <span class="form-section__letter" aria-hidden="true">8</span>
+            <span class="form-section__title"><span class="sr-only">Section 8: </span>Adjunctive Therapies</span>
             <span class="badge form-section__status" data-status></span>
             <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
           </summary>
@@ -922,50 +1019,22 @@
           </div>
         </details>
 
-        <details class="form-section" data-section="8">
+        <details class="form-section" data-section="9" data-key="orders">
           <summary class="form-section__summary">
-            <span class="form-section__letter" aria-hidden="true">8</span>
-            <span class="form-section__title"><span class="sr-only">Section 8: </span>Orders</span>
+            <span class="form-section__letter" aria-hidden="true">9</span>
+            <span class="form-section__title"><span class="sr-only">Section 9: </span>Orders</span>
             <span class="badge form-section__status" data-status></span>
             <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
           </summary>
           <div class="form-section__body">
             <section class="subsection">
-              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2" /><path d="M8.5 2h7" /><path d="M7 16h10" /></svg>Laboratory</h3>
-              <fieldset class="q">
-                <legend class="label">Tests</legend>
-                <div class="chips">
-                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="cbc" /><span>CBC</span></label>
-                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="esr" /><span>ESR</span></label>
-                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="crp" /><span>CRP</span></label>
-                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="fbg" /><span>Fasting blood glucose</span></label>
-                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="hba1c" /><span>HbA1c</span></label>
-                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="creatinine" /><span>Serum creatinine</span></label>
-                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="wound-culture" /><span>Wound culture (C&amp;S)</span></label>
-                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="procalcitonin" /><span>Procalcitonin</span></label>
-                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="bone-culture" /><span>Bone culture</span></label>
-                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="blood-culture" /><span>Blood cultures</span></label>
-                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="lactate" /><span>Lactate</span></label>
-                  <label class="chip"><input type="checkbox" name="r.orders.labs" value="albumin" /><span>Albumin</span></label>
-                </div>
-              </fieldset>
+              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2" /><path d="M8.5 2h7" /><path d="M7 16h10" /></svg>Tests</h3>
+              <p class="field-hint">Laboratory and imaging. Some tests need approval or insurance approval before they go ahead; their status shows here.</p>
+              <div class="test-orders" data-test-orders></div>
               <div class="q">
-                <label class="label" for="f-r-orders-labsOther">Other tests <span class="label__optional">(optional)</span></label>
+                <label class="label" for="f-r-orders-labsOther">Other tests (free text) <span class="label__optional">(optional)</span></label>
                 <input class="input" id="f-r-orders-labsOther" name="r.orders.labsOther" autocomplete="off" />
               </div>
-            </section>
-
-            <section class="subsection">
-              <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2" /><path d="M17 3h2a2 2 0 0 1 2 2v2" /><path d="M21 17v2a2 2 0 0 1-2 2h-2" /><path d="M7 21H5a2 2 0 0 1-2-2v-2" /></svg>Imaging</h3>
-              <fieldset class="q">
-                <legend class="label">Imaging</legend>
-                <div class="chips">
-                  <label class="chip"><input type="checkbox" name="r.orders.imaging" value="xray" /><span>Plain radiograph</span></label>
-                  <label class="chip"><input type="checkbox" name="r.orders.imaging" value="mri" /><span>MRI</span></label>
-                  <label class="chip"><input type="checkbox" name="r.orders.imaging" value="duplex" /><span>Arterial duplex</span></label>
-                  <label class="chip"><input type="checkbox" name="r.orders.imaging" value="cta" /><span>CT / MR angiography</span></label>
-                </div>
-              </fieldset>
             </section>
 
             <section class="subsection">
@@ -983,10 +1052,10 @@
           </div>
         </details>
 
-        <details class="form-section" data-section="9">
+        <details class="form-section" data-section="10" data-key="interpretation">
           <summary class="form-section__summary">
-            <span class="form-section__letter" aria-hidden="true">9</span>
-            <span class="form-section__title"><span class="sr-only">Section 9: </span>Clinical Interpretation</span>
+            <span class="form-section__letter" aria-hidden="true">10</span>
+            <span class="form-section__title"><span class="sr-only">Section 10: </span>Clinical Interpretation</span>
             <span class="badge form-section__status" data-status></span>
             <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
           </summary>
@@ -1014,10 +1083,10 @@
           </div>
         </details>
 
-        <details class="form-section" data-section="10">
+        <details class="form-section" data-section="11" data-key="referral">
           <summary class="form-section__summary">
-            <span class="form-section__letter" aria-hidden="true">10</span>
-            <span class="form-section__title"><span class="sr-only">Section 10: </span>Referral Decision</span>
+            <span class="form-section__letter" aria-hidden="true">11</span>
+            <span class="form-section__title"><span class="sr-only">Section 11: </span>Referral Decision</span>
             <span class="badge form-section__status" data-status></span>
             <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
           </summary>
@@ -1047,11 +1116,12 @@
                 <fieldset class="q" data-required="radio" data-error="Choose the destination.">
                   <legend class="label">Destination</legend>
                   <div class="chips">
+                    <label class="chip"><input type="radio" name="r.ref.destination" value="er" /><span>Emergency department</span></label>
+                    <label class="chip"><input type="radio" name="r.ref.destination" value="tertiary" /><span>Tertiary</span></label>
                     <label class="chip"><input type="radio" name="r.ref.destination" value="secondary" /><span>Secondary Care</span></label>
-                    <label class="chip"><input type="radio" name="r.ref.destination" value="private" /><span>Private Center</span></label>
                     <label class="chip"><input type="radio" name="r.ref.destination" value="vascular" /><span>Vascular</span></label>
                     <label class="chip"><input type="radio" name="r.ref.destination" value="wound-care" /><span>Wound Care</span></label>
-                    <label class="chip"><input type="radio" name="r.ref.destination" value="tertiary" /><span>Tertiary</span></label>
+                    <label class="chip"><input type="radio" name="r.ref.destination" value="private" /><span>Private Center</span></label>
                   </div>
                   <p class="field-error" hidden>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
@@ -1077,6 +1147,7 @@
                     <label class="chip"><input type="radio" name="r.ref.timing" value="today" /><span>Today</span></label>
                     <label class="chip"><input type="radio" name="r.ref.timing" value="24h" /><span>≤ 24 h</span></label>
                     <label class="chip"><input type="radio" name="r.ref.timing" value="week" /><span>≤ 1 week</span></label>
+                    <label class="chip"><input type="radio" name="r.ref.timing" value="3weeks" /><span>≤ 3 weeks</span></label>
                     <label class="chip"><input type="radio" name="r.ref.timing" value="scheduled" /><span>Scheduled</span></label>
                   </div>
                   <p class="field-error" hidden>
@@ -1093,10 +1164,10 @@
           </div>
         </details>
 
-        <details class="form-section" data-section="11">
+        <details class="form-section" data-section="12" data-key="plan">
           <summary class="form-section__summary">
-            <span class="form-section__letter" aria-hidden="true">11</span>
-            <span class="form-section__title"><span class="sr-only">Section 11: </span>Plan</span>
+            <span class="form-section__letter" aria-hidden="true">12</span>
+            <span class="form-section__title"><span class="sr-only">Section 12: </span>Plan</span>
             <span class="badge form-section__status" data-status></span>
             <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
           </summary>
@@ -1160,10 +1231,10 @@
           </div>
         </details>
 
-        <details class="form-section" data-section="12">
+        <details class="form-section" data-section="13" data-key="instructions">
           <summary class="form-section__summary">
-            <span class="form-section__letter" aria-hidden="true">12</span>
-            <span class="form-section__title"><span class="sr-only">Section 12: </span>Patient Instructions</span>
+            <span class="form-section__letter" aria-hidden="true">13</span>
+            <span class="form-section__title"><span class="sr-only">Section 13: </span>Patient Instructions</span>
             <span class="badge form-section__status" data-status></span>
             <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
           </summary>
@@ -1173,7 +1244,7 @@
               <div class="note-toolbar">
                 <span class="badge badge-muted" data-instructions-edited hidden>Edited</span>
                 <button type="button" class="btn btn-outline" data-regenerate="instructions"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M8 16H3v5" /></svg>Regenerate</button>
-                <button type="button" class="btn btn-outline" data-print-instructions><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6" /><rect x="6" y="14" width="12" height="8" rx="1" /></svg>Print</button>
+                <button type="button" class="btn btn-outline" data-print-instructions><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6" /><rect x="6" y="14" width="12" height="8" rx="1" /></svg>Print / PDF</button>
               </div>
               <div class="q">
                 <label class="label" for="f-r-instructions">Patient instructions</label>
@@ -1183,10 +1254,10 @@
           </div>
         </details>
 
-        <details class="form-section" data-section="13">
+        <details class="form-section" data-section="14" data-key="note">
           <summary class="form-section__summary">
-            <span class="form-section__letter" aria-hidden="true">13</span>
-            <span class="form-section__title"><span class="sr-only">Section 13: </span>Clinical Note</span>
+            <span class="form-section__letter" aria-hidden="true">14</span>
+            <span class="form-section__title"><span class="sr-only">Section 14: </span>Clinical Note</span>
             <span class="badge form-section__status" data-status></span>
             <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
           </summary>
@@ -1196,6 +1267,7 @@
               <div class="note-toolbar">
                 <span class="badge badge-muted" data-note-edited hidden>Edited</span>
                 <button type="button" class="btn btn-outline" data-regenerate="note"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M8 16H3v5" /></svg>Regenerate</button>
+                <button type="button" class="btn btn-outline" data-print-summary><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6" /><rect x="6" y="14" width="12" height="8" rx="1" /></svg>Print / PDF</button>
               </div>
               <p class="field-hint">Built from the findings, decisions and plan. Regenerating replaces your edits.</p>
               <div class="q">
@@ -1206,16 +1278,17 @@
           </div>
         </details>
 
-        <details class="form-section" data-section="14">
+        <details class="form-section" data-section="15" data-key="signoff">
           <summary class="form-section__summary">
-            <span class="form-section__letter" aria-hidden="true">14</span>
-            <span class="form-section__title"><span class="sr-only">Section 14: </span>Sign-off</span>
+            <span class="form-section__letter" aria-hidden="true">15</span>
+            <span class="form-section__title"><span class="sr-only">Section 15: </span>Sign-off</span>
             <span class="badge form-section__status" data-status></span>
             <svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
           </summary>
           <div class="form-section__body">
             <section class="subsection">
               <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9" /><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z" /></svg>Signature</h3>
+              <div class="callout callout-info sign-notice"><div><strong>Before you sign</strong><p data-sign-notice>The suggestions and proposed tests in this system are generated from rules set by the clinic&#x27;s senior doctor for general cases. They are decision support only. The signing practitioner remains fully responsible for all clinical decisions.</p></div></div>
               <dl class="detail-grid detail-grid--plain">
                 <div><dt>Assessor</dt><dd data-assessor></dd></div>
                 <div><dt>Role</dt><dd data-assessor-role></dd></div>
@@ -1261,6 +1334,11 @@
           <h2 class="modal__title" id="confirm-sign-title">Sign and complete this review?</h2>
           <p class="modal__description" id="confirm-sign-text"></p>
         </div>
+        <div class="sign-ack">
+          <p class="sign-ack__text">The suggestions and proposed tests in this system are generated from rules set by the clinic&#x27;s senior doctor for general cases. They are decision support only. The signing practitioner remains fully responsible for all clinical decisions.</p>
+          <label class="check-row"><input type="checkbox" class="checkbox" id="ack-notice" /><span>I have read and acknowledge this notice</span></label>
+          <p class="field-error" id="ack-error" hidden><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg><span>Acknowledge the notice to sign.</span></p>
+        </div>
         <div class="modal__actions">
           <button type="submit" class="btn btn-outline" value="cancel">Keep editing</button>
           <button type="submit" class="btn btn-primary" value="sign">Sign</button>
@@ -1273,6 +1351,11 @@
     <script src="./scripts/screening-schema.js"></script>
     <script src="./scripts/screening-store.js"></script>
     <script src="./scripts/clinical-rules.js"></script>
+    <script src="./scripts/review-schema.js"></script>
+    <script src="./scripts/layout.js"></script>
+    <script src="./scripts/drafts.js"></script>
+    <script src="./scripts/test-orders-ui.js"></script>
+    <script src="./scripts/encounters-ui.js"></script>
     <script src="./scripts/review.js"></script>
   </body>
 </html>

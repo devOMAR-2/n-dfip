@@ -4,9 +4,21 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Home</title>
+    <title>Home · N-DFIP</title>
     <link rel="stylesheet" href="./styles/shared.css" />
+    <script src="./scripts/db.js"></script>
     <script src="./scripts/auth.js"></script>
+    <script src="./scripts/staff.js"></script>
+    <script src="./scripts/access.js"></script>
+    <script src="./scripts/org.js"></script>
+    <script src="./scripts/audit.js"></script>
+    <script src="./scripts/privacy.js"></script>
+    <script src="./scripts/history-seed.js"></script>
+    <script src="./scripts/referrals.js"></script>
+    <script src="./scripts/tests.js"></script>
+    <script src="./scripts/session.js"></script>
+    <script src="./scripts/privacy-ui.js"></script>
+    <script src="./scripts/notifications.js"></script>
     <script>
       // Not signed in: back to the sign-in page
       if (!Auth.getSessionId()) window.location.replace(Auth.LOGIN_PAGE);
@@ -14,11 +26,14 @@
   </head>
   <body>
     <header class="app-header">
-      <a class="app-title" href="./home.html">The Clinical Platform</a>
+      <a class="app-title" href="./home.html" aria-label="N-DFIP, National Diabetic Foot Intelligence Platform, home"><span class="app-title__short">N-DFIP</span><span class="app-title__full">National Diabetic Foot Intelligence Platform</span></a>
 
       <nav class="app-nav" aria-label="Main">
         <a href="./home.html" aria-current="page">Home</a>
+        <a href="./patients.html">Patients</a>
+        <a href="./referrals.html">Referrals</a>
         <a href="./dashboard.html">Dashboard</a>
+        <a href="./audit.html">Audit log</a>
         <a href="./settings.html">Settings</a>
       </nav>
 
@@ -61,6 +76,12 @@
         </p>
       </div>
 
+      <!-- Work queues, shown per role (UAT-06/07/08) -->
+      <section class="page-section" data-queue="screening" hidden></section>
+      <section class="page-section" data-queue="review" hidden></section>
+      <section class="page-section" data-queue="pre-review" hidden></section>
+      <section class="page-section" data-queue="supervision" hidden></section>
+
       <section class="page-section" aria-labelledby="clinics-heading">
         <h2 class="section-title" id="clinics-heading">Clinics</h2>
 
@@ -81,8 +102,11 @@
     </main>
 
     <script src="./scripts/user-menu.js"></script>
+    <script src="./scripts/screening-store.js"></script>
+    <script src="./scripts/encounters-ui.js"></script>
+    <script src="./scripts/worklist.js"></script>
     <script>
-      const user = Auth.findUser(Auth.getSessionId());
+      const user = Access.currentUser();
       if (user) document.getElementById("welcome-name").textContent = user.name;
 
       // "Today is Sunday, October 4, 2026 - 01:05 PM" (12-hour, leading zero)

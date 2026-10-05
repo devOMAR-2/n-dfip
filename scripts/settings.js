@@ -1,5 +1,7 @@
 // Settings › Clinics: demo clinic builder (details, team, ordered steps, step access,
-// sections and questions). UI only: saved to localStorage, doesn't change live pages.
+// sections and questions). The Diabetic Foot clinic drives the live pages: saving it
+// publishes a new page-layout version (layout.js) with the questions added, moved or switched
+// off here (F-13, UAT-15). Other clinics have no live pages yet.
 // Needs auth.js, staff.js and screening-schema.js.
 
 (() => {
@@ -65,6 +67,19 @@
   const TYPE_LABEL = Object.fromEntries(TYPES);
   const HAS_OPTIONS = new Set(["single", "multiple", "select"]);
 
+  // Foot map: same drawing as the live form (generated into screening-schema.js)
+  const DIAGRAM = ScreeningSchema.footDiagram;
+  const SENSATION_SITES = ["hallux", "mth1", "mth5"];
+  const MAP_VIEWS = [["plantar", "Sole view"], ["dorsal", "Top view"], ["both", "Sole and top views"]];
+  const DORSAL_ZONES = new Set(Object.keys(DIAGRAM.labels).filter((z) => z !== "heel"));
+  // Older saved clinics have foot maps without a view or sites
+  const footmapDefaults = (question) => {
+    if (question.type !== "footmap") return;
+    question.view ??= "plantar";
+    question.sites ??= [...SENSATION_SITES];
+  };
+  const shownSites = (question) => (question.view === "dorsal" ? question.sites.filter((z) => DORSAL_ZONES.has(z)) : question.sites);
+
   // Demo staff directory lives in staff.js (shared with Roles & permissions)
   const STAFF = StaffDirectory;
 
@@ -79,20 +94,22 @@
 
   // ---------- Seed: Diabetic Foot from the real nurse form schema ----------
 
-  function questionsFromSchema() {
-    const typeOf = { radio: "single", checkbox: "multiple", number: "number", range: "scale", text: "text", select: "select", file: "photo" };
+  function questionsFromSchema(schema = ScreeningSchema, page = "screening") {
+    const typeOf = { radio: "single", checkbox: "multiple", number: "number", range: "scale", text: "text", select: "select", file: "photo", textarea: "longtext" };
     const sections = [];
     const seen = new Set();
-    for (const f of ScreeningSchema.fields) {
+    const titles = Object.fromEntries(Layout.SECTIONS[page]);
+    for (const f of schema.fields) {
       const parts = f.name.split(".");
       const perFoot = parts[1] === "left" || parts[1] === "right";
-      const perUlcer = /^\d$/.test(parts[1]);
-      const key = perFoot || perUlcer ? `${parts[0]}.*.${parts.slice(2).join(".")}` : f.name;
+      const perUlcer = /^\d$/.test(parts[1]) || /^r\.w\.\d/.test(f.name);
+      const key = Layout.keyOf(f.name);
       if (seen.has(key)) continue;
       seen.add(key);
       let section = sections.find((s) => s.letter === f.section);
       if (!section) {
-        section = { id: uid("sec"), letter: f.section, title: `${f.section} · ${ScreeningSchema.sections[f.section]}`, questions: [] };
+        const n = Layout.SECTIONS[page].findIndex(([k]) => k === f.section) + 1;
+        section = { id: uid("sec"), letter: f.section, key: f.section, title: page === "screening" ? `${f.section} · ${titles[f.section]}` : `${n} · ${titles[f.section]}`, questions: [] };
         sections.push(section);
       }
       const yesno = f.options?.length === 2 && f.options[0][0] === "yes" && f.options[1][0] === "no";
@@ -105,11 +122,15 @@
         required: !!f.required,
         perFoot,
         unit: f.unit ?? "",
+        key,
+        fixed: perUlcer, // per-ulcer questions stay where they are
       });
     }
     // The nurse form places sensation sites on a foot map
     const c = sections.find((s) => s.letter === "C");
-    if (c) c.questions.splice(1, 0, { id: uid("q"), label: "Sensation sites", help: "Tap a site to cycle Detected / Absent / Not assessed", type: "footmap", options: [], required: true, perFoot: true, unit: "" });
+    if (c) c.questions.splice(1, 0, { id: uid("q"), label: "Sensation sites", help: "Tap a site to cycle Detected / Absent / Not assessed", type: "footmap", options: [], required: true, perFoot: true, unit: "", view: "plantar", sites: [...SENSATION_SITES], fixedMap: true });
+    const j = sections.find((s) => s.letter === "J");
+    if (j) j.questions.splice(1, 0, { id: uid("q"), label: "Ulcer location", help: "Tap a site to place the selected ulcer", type: "footmap", options: [], required: true, perFoot: true, unit: "", view: "both", sites: Object.keys(DIAGRAM.labels), fixedMap: true });
     sections.forEach((s) => delete s.letter);
     return sections;
   }
@@ -121,35 +142,19 @@
       {
         id: "diabetic-foot",
         name: "Diabetic Foot",
+        live: 2, // linked to the live pages (page-layout versions)
         excerpt: "Structured foot screening by trained staff, prepared for practitioner review. One connected record supporting prevention, continuity and limb preservation.",
         nurses: ["100002", "200011"],
         practitioners: ["100003", "200021"],
         steps: [
-          { id: uid("step"), name: "Screening room", description: "Nurse records objective measurements before the practitioner sees the patient.", access: clone(ACCESS.screening), sections: questionsFromSchema() },
+          { id: uid("step"), name: "Screening room", description: "Nurse records objective measurements before the practitioner sees the patient.", access: clone(ACCESS.screening), page: "screening", sections: questionsFromSchema() },
           {
             id: uid("step"),
             name: "Practitioner review",
             description: "Practitioner confirms or corrects findings, decides classifications, orders, referral and plan, then signs off.",
             access: clone(ACCESS.review),
-            sections: [
-              { id: uid("sec"), title: "Wound evaluation", questions: [
-                q("Onset / duration", "single", { options: ["< 1 week", "1–4 weeks", "1–3 months", "> 3 months"] }),
-                q("Type / cause", "single", { options: ["Neuropathic", "Ischaemic", "Neuro-ischaemic", "Pressure", "Trauma", "Surgical", "Other"] }),
-                q("Length", "number", { unit: "cm" }), q("Width", "number", { unit: "cm" }), q("Depth", "number", { unit: "cm" }),
-                q("Local infection signs", "multiple", { options: ["Swelling / induration", "Erythema", "Tenderness", "Warmth", "Purulent discharge", "None"] }),
-                q("Probe-to-bone", "single", { options: ["Positive", "Negative"] }),
-              ] },
-              { id: uid("sec"), title: "Referral decision", questions: [
-                q("Referral needed?", "yesno"),
-                q("Destination", "single", { options: ["Secondary Care", "Private Center", "Vascular", "Wound Care", "Tertiary"] }),
-                q("Urgency", "single", { options: ["Routine", "Soon", "Urgent", "Emergency"] }),
-              ] },
-              { id: uid("sec"), title: "Plan", questions: [
-                q("Follow-up interval", "select", { options: ["48 hours", "1 week", "2 weeks", "1 month", "1–3 months", "3–6 months", "6–12 months", "12 months"] }),
-                q("Patient / carer understands the plan", "yesno"),
-              ] },
-              { id: uid("sec"), title: "Sign-off", questions: [q("Clinical impression", "longtext"), q("Signature", "text", { help: "Must match the signed-in name" })] },
-            ],
+            page: "review",
+            sections: questionsFromSchema(ReviewSchema, "review"),
           },
         ],
       },
@@ -157,28 +162,89 @@
   }
 
   function load() {
-    try {
-      const saved = JSON.parse(localStorage.getItem(KEY) || "null");
-      if (Array.isArray(saved) && saved.length) return saved;
-    } catch {}
-    return seedClinics();
+    const saved = Db.read(KEY, null);
+    if (!Array.isArray(saved) || !saved.length) return applyLayout(seedClinics());
+    const fresh = seedClinics()[0];
+    return saved.map((c) => (c.id === "diabetic-foot" && c.live !== fresh.live ? applyLayout([{ ...c, live: fresh.live, steps: fresh.steps }])[0] : c));
   }
 
+  // Show the published layout in the builder: moved and switched-off questions, added ones
+  function applyLayout(list) {
+    const df = list.find((c) => c.id === "diabetic-foot");
+    if (!df) return list;
+    const cfg = Layout.current();
+    const all = df.steps.flatMap((st) => st.sections.map((sec) => ({ st, sec })));
+    for (const { sec } of all) {
+      for (const q of [...sec.questions]) {
+        if (!q.key) continue;
+        const pl = Layout.placement(cfg, q.key);
+        q.enabled = pl.enabled;
+        const target = all.find(({ st, sec: s2 }) => st.page === pl.page && s2.key === pl.section);
+        if (target && target.sec !== sec) {
+          sec.questions.splice(sec.questions.indexOf(q), 1);
+          target.sec.questions.push(q);
+        }
+      }
+    }
+    for (const c of cfg.custom) {
+      if (all.some(({ sec }) => sec.questions.some((q) => q.id === c.id))) continue;
+      const target = all.find(({ st, sec }) => st.page === c.page && sec.key === c.section) ?? all.find(({ st }) => st.page === c.page);
+      if (target) target.sec.questions.push({ id: c.id, label: c.label, help: c.help ?? "", type: c.type, options: c.options ?? [], required: !!c.required, perFoot: !!c.perFoot, unit: c.unit ?? "", view: c.view, sites: c.sites, enabled: c.enabled !== false });
+    }
+    return list;
+  }
+
+  // Throws Db.SaveError (shown by the caller)
   function store(all) {
-    try {
-      localStorage.setItem(KEY, JSON.stringify(all));
-    } catch {}
+    Db.write(KEY, all, { where: "clinic builder" });
+  }
+
+  // F-13: builder -> live pages. Built-in questions: page, section, on / off.
+  // Questions added here become clinic questions on the page and section they sit in.
+  function layoutFromBuilder(clinic) {
+    const cfg = Layout.current();
+    cfg.questions = {};
+    cfg.custom = [];
+    const seen = new Set();
+    for (const step of clinic.steps) {
+      if (!step.page) continue;
+      for (const sec of step.sections) {
+        for (const q of sec.questions) {
+          if (q.fixedMap) continue;
+          if (q.key) {
+            seen.add(q.key);
+            const home = Layout.fieldOf(q.key);
+            const o = {};
+            if (step.page !== Layout.pageOfKey(q.key)) o.page = step.page;
+            if (sec.key && sec.key !== home?.section) o.section = sec.key;
+            if (q.enabled === false) o.enabled = false;
+            if (Object.keys(o).length) cfg.questions[q.key] = { ...o, page: o.page ?? Layout.pageOfKey(q.key) };
+          } else {
+            cfg.custom.push({
+              id: q.id, key: `x.${q.id}`, label: q.label, help: q.help, type: q.type, options: q.options, required: !!q.required,
+              unit: q.unit, perFoot: !!q.perFoot, view: q.view, sites: q.sites, page: step.page, section: sec.key ?? null, enabled: q.enabled !== false,
+            });
+          }
+        }
+      }
+    }
+    // Built-in questions deleted in the builder are switched off on the page
+    for (const page of ["screening", "review"]) {
+      for (const q of Layout.catalogue(page)) if (!seen.has(q.key) && q.movable) cfg.questions[q.key] = { page, enabled: false };
+    }
+    return cfg;
   }
 
   let clinics = load();
   let draft = null; // clinic being edited (a copy until saved)
   let dirty = false;
+  let openedSnapshot = null;
   const open = new Set(); // ids of expanded steps / questions
 
   // ---------- Access ----------
 
-  const me = Auth.findUser(Auth.getSessionId());
-  const isAdmin = me?.role === "admin";
+  const me = Access.currentUser();
+  const isAdmin = Access.canAny(["admin.clinics", "clinic.setup"]);
   $("#settings-readonly").hidden = isAdmin;
   $$("[data-admin-only]").forEach((b) => (b.hidden = !isAdmin));
 
@@ -239,6 +305,8 @@
       ? clone(existing)
       : { id: uid("clinic"), name: "", excerpt: "", nurses: [], practitioners: [], steps: [{ id: uid("step"), name: "Screening room", description: "", access: clone(ACCESS.screening), sections: [{ id: uid("sec"), title: "Section 1", questions: [] }] }] };
     dirty = !existing;
+    // What was stored when the editor opened: a save over someone else's newer save is refused (EC-11)
+    openedSnapshot = JSON.stringify(Db.read(KEY, null));
     open.clear();
     if (!existing) open.add(draft.steps[0].id);
     $("#clinic-list-view").hidden = true;
@@ -499,7 +567,9 @@
     const meta = el("span", "question-item__meta");
     meta.append(el("span", "badge badge-secondary", TYPE_LABEL[question.type]));
     if (question.required) meta.append(el("span", "badge badge-risk-3", "Required"));
-    if (question.perFoot) meta.append(el("span", "badge badge-muted", "Each foot"));
+    if (question.enabled === false) meta.append(el("span", "badge badge-muted", "Switched off"));
+    else if (draft?.live && !question.key && !question.fixedMap) meta.append(el("span", "badge badge-status-progress", "Clinic question"));
+    if (question.perFoot && question.type !== "footmap") meta.append(el("span", "badge badge-muted", "Each foot"));
     frag.append(meta);
     return frag;
   }
@@ -526,6 +596,9 @@
       down,
       iconButton("copy", "Duplicate", () => {
         const copy = { ...clone(question), id: uid("q"), label: `${question.label} (copy)` };
+        delete copy.key; // a copy is a new clinic question
+        delete copy.fixed;
+        delete copy.fixedMap;
         section.questions.splice(qi + 1, 0, copy);
         open.add(copy.id);
         markDirty();
@@ -560,6 +633,7 @@
     typeSelect.addEventListener("change", () => {
       question.type = typeSelect.value;
       if (HAS_OPTIONS.has(question.type) && question.options.length < 2) question.options = ["Option 1", "Option 2"];
+      footmapDefaults(question);
       markDirty();
       renderSteps();
       $(`[data-question="${question.id}"] select`)?.focus();
@@ -605,13 +679,58 @@
       grid.append(optWrap);
     }
 
+    if (question.type === "footmap") {
+      footmapDefaults(question);
+      const viewWrap = el("div", "q");
+      const viewId = uid("f");
+      const viewLabel = el("label", "label", "View");
+      viewLabel.htmlFor = viewId;
+      const viewSelect = el("select", "input select");
+      viewSelect.id = viewId;
+      MAP_VIEWS.forEach(([v, l]) => viewSelect.append(new Option(l, v, false, v === question.view)));
+      viewSelect.addEventListener("change", () => {
+        question.view = viewSelect.value;
+        markDirty();
+        renderSteps();
+      });
+      viewWrap.append(viewLabel, viewSelect);
+      grid.append(viewWrap);
+
+      const sitesWrap = el("fieldset", "q");
+      sitesWrap.dataset.check = `q-sites-${question.id}`;
+      sitesWrap.append(el("legend", "label", "Tappable sites"));
+      const chips = el("div", "chips");
+      for (const [zone, label] of Object.entries(DIAGRAM.labels)) {
+        const chip = el("label", "chip");
+        const box = el("input");
+        box.type = "checkbox";
+        box.checked = question.sites.includes(zone);
+        box.addEventListener("change", () => {
+          question.sites = Object.keys(DIAGRAM.labels).filter((z) => (z === zone ? box.checked : question.sites.includes(z)));
+          markDirty();
+          refresh();
+        });
+        chip.append(box, el("span", "", label));
+        chips.append(chip);
+      }
+      sitesWrap.append(chips);
+      if (question.view === "dorsal") sitesWrap.append(el("p", "field-hint", "The heel is not shown in the top view."));
+      const err = el("p", "field-error");
+      err.hidden = true;
+      err.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg><span></span>';
+      sitesWrap.append(err);
+      grid.append(sitesWrap);
+    }
+
     if (question.type === "number") {
       grid.append(textField("Unit", question.unit, (v) => ((question.unit = v), refresh()), { optional: true, placeholder: "e.g. mmHg" }));
     }
 
     // Toggles
     const toggles = el("div", "toggle-row");
-    for (const [key, label] of [["required", "Required"], ["perFoot", "Ask for each foot"]]) {
+    // A foot map always shows both feet, so "Ask for each foot" doesn't apply
+    const toggleKeys = question.type === "footmap" ? [["required", "Required"]] : [["required", "Required"], ["perFoot", "Ask for each foot"]];
+    for (const [key, label] of toggleKeys) {
       const t = el("label", "toggle");
       const box = el("input", "checkbox");
       box.type = "checkbox";
@@ -624,9 +743,58 @@
       t.append(box, el("span", "", label));
       toggles.append(t);
     }
+    // Switched off: hidden on the live form, kept here (EC-09: nothing is deleted)
+    const on = el("label", "toggle");
+    on.dataset.keep = "";
+    const onBox = el("input", "checkbox");
+    onBox.type = "checkbox";
+    onBox.checked = question.enabled !== false;
+    onBox.addEventListener("change", () => {
+      question.enabled = onBox.checked;
+      markDirty();
+      renderSteps();
+    });
+    on.append(onBox, el("span", "", "Shown on the form"));
+    toggles.append(on);
     grid.append(toggles);
 
+    // Move to another section or step (live steps only)
+    if (draft.live && !question.fixed && !question.fixedMap) {
+      const wrap = el("div", "q");
+      wrap.dataset.keep = "";
+      const sid = uid("f");
+      const lab = el("label", "label", "Section");
+      lab.htmlFor = sid;
+      const sel = el("select", "input select");
+      sel.id = sid;
+      for (const st of draft.steps) {
+        const og = document.createElement("optgroup");
+        og.label = st.name;
+        st.sections.forEach((sec2) => og.append(new Option(sec2.title || "Untitled section", sec2.id, false, sec2 === section)));
+        sel.append(og);
+      }
+      sel.addEventListener("change", () => {
+        const target = draft.steps.flatMap((st) => st.sections).find((x) => x.id === sel.value);
+        if (!target || target === section) return;
+        section.questions.splice(section.questions.indexOf(question), 1);
+        target.questions.push(question);
+        open.add(question.id);
+        markDirty();
+        renderSteps();
+      });
+      wrap.append(lab, sel, el("p", "field-hint", "Moving a question to the other step moves it to that page for new encounters."));
+      grid.append(wrap);
+    }
+
     body.append(grid);
+    // Built-in questions: wording and answers are fixed in this version; they can be moved
+    // or switched off. Questions added here are fully editable.
+    if (question.key || question.fixedMap) {
+      $$("input, select, textarea, button", grid).forEach((f) => {
+        if (!f.closest("[data-keep]")) f.disabled = true;
+      });
+      grid.prepend(el("p", "field-hint builtin-note", question.fixedMap ? "Built-in foot map. Shown here for reference." : "Built-in question: the wording and answers are fixed. You can move it or switch it off."));
+    }
     const previewWrap = el("div", "question-preview-wrap");
     previewWrap.append(el("p", "eyebrow", "Preview"), preview);
     body.append(previewWrap);
@@ -714,10 +882,84 @@
         return f;
       }
       case "footmap":
-        return el("p", "preview-footmap", "Interactive foot diagram (left and right sole) with tappable sites.");
+        return footmapPreview(question);
       default:
         return el("input", "input");
     }
+  }
+
+  // Real diagram, same orientation as the live form: sole view reads right foot then
+  // left foot, top view left then right, big toes towards the centre (UAT F-11).
+  // Tapping a site in the preview shows how it will respond.
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  const svgEl = (tag, attrs = {}) => {
+    const node = document.createElementNS(SVG_NS, tag);
+    for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+    return node;
+  };
+
+  function footSvg(side, view, sites) {
+    const svg = svgEl("svg", { class: "foot-map__svg", viewBox: "0 0 100 220", role: "group", "aria-label": `${side === "left" ? "Left" : "Right"} foot, ${view === "plantar" ? "sole" : "top"} view` });
+    const flip = view === "plantar" ? side === "right" : side === "left";
+    const g = svgEl("g", flip ? { transform: "translate(100 0) scale(-1 1)" } : {});
+    g.append(svgEl("path", { class: "foot-outline", d: DIAGRAM.outline }));
+    const shape = (zone, tag, attrs) => {
+      const tappable = sites.includes(zone);
+      const node = svgEl(tag, { ...attrs, class: tappable ? "foot-zone" : "foot-landmark", "data-zone": zone });
+      const title = svgEl("title");
+      title.textContent = DIAGRAM.labels[zone];
+      node.append(title);
+      if (tappable) {
+        node.setAttribute("tabindex", "0");
+        node.setAttribute("role", "button");
+        node.setAttribute("aria-label", DIAGRAM.labels[zone]);
+        const toggle = () => node.classList.toggle("is-selected");
+        node.addEventListener("click", toggle);
+        node.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            toggle();
+          }
+        });
+      }
+      g.append(node);
+    };
+    for (const [z, cx, cy, rx, ry] of DIAGRAM.toes) {
+      shape(z, "ellipse", { cx, cy, rx, ry });
+      if (view === "dorsal") g.append(svgEl("ellipse", { class: "foot-nail", cx, cy: (cy - ry * 0.35).toFixed(1), rx: (rx * 0.55).toFixed(1), ry: (ry * 0.4).toFixed(1) }));
+    }
+    for (const [z, cx, cy, r] of DIAGRAM.mths) shape(z, "circle", { cx, cy, r });
+    const [mx, my, mrx, mry] = DIAGRAM.midfoot;
+    shape("midfoot", "ellipse", { cx: mx, cy: my, rx: mrx, ry: mry });
+    if (view === "plantar") {
+      const [hx, hy, hrx, hry] = DIAGRAM.heel;
+      shape("heel", "ellipse", { cx: hx, cy: hy, rx: hrx, ry: hry });
+    }
+    svg.append(g);
+    return svg;
+  }
+
+  function footmapPreview(question) {
+    footmapDefaults(question);
+    const wrap = el("div", "preview-footmap");
+    const views = question.view === "both" ? ["plantar", "dorsal"] : [question.view];
+    const viewsWrap = el("div", "ulcer-map__views");
+    for (const view of views) {
+      const block = el("div", "ulcer-map__view");
+      block.append(el("p", "ulcer-map__view-title", view === "plantar" ? "Sole view" : "Top view"));
+      const feet = el("div", "ulcer-map__feet");
+      const order = view === "plantar" ? [["right", "Right foot"], ["left", "Left foot"]] : [["left", "Left foot"], ["right", "Right foot"]];
+      for (const [side, label] of order) {
+        const fig = el("figure", "ulcer-map__foot");
+        fig.append(footSvg(side, view, question.sites), el("figcaption", "", label));
+        feet.append(fig);
+      }
+      block.append(feet);
+      viewsWrap.append(block);
+    }
+    const shown = shownSites(question);
+    wrap.append(viewsWrap, el("p", "field-hint", shown.length ? `Tappable: ${shown.map((z) => DIAGRAM.labels[z]).join(", ")}.` : "No sites chosen yet."));
+    return wrap;
   }
 
   // ---------- Validation and save ----------
@@ -748,6 +990,10 @@
       step.sections.forEach((section) =>
         section.questions.forEach((question) => {
           if (!question.label.trim()) problems.push([`q-label-${question.id}`, "Enter the question text.", [step.id, question.id]]);
+          if (question.type === "footmap") {
+            footmapDefaults(question);
+            if (!shownSites(question).length) problems.push([`q-sites-${question.id}`, "Choose at least one site the user can tap.", [step.id, question.id]]);
+          }
           if (HAS_OPTIONS.has(question.type) && question.options.filter((o) => o.trim()).length < 2) {
             problems.push([`q-options-${question.id}`, "Add at least two answer options.", [step.id, question.id]]);
           }
@@ -796,12 +1042,35 @@
       return;
     }
     const index = clinics.findIndex((c) => c.id === draft.id);
-    if (index >= 0) clinics[index] = clone(draft);
-    else clinics.push(clone(draft));
-    store(clinics);
+    const next = [...clinics];
+    if (index >= 0) next[index] = clone(draft);
+    else next.push(clone(draft));
+    let published = null;
+    if (JSON.stringify(Db.read(KEY, null)) !== openedSnapshot) {
+      $("#editor-status").textContent = "Another administrator saved clinic settings after you opened this editor. Nothing was saved. Cancel and reopen to see their changes.";
+      toast("Not saved: changed by someone else");
+      return;
+    }
+    try {
+      if (draft.live) {
+        const before = Layout.current();
+        const cfg = layoutFromBuilder(draft);
+        if (JSON.stringify([before.questions, before.custom]) !== JSON.stringify([cfg.questions, cfg.custom])) {
+          published = Layout.publish(cfg, "Questions changed in the clinic builder", Layout.state().rev);
+        }
+      }
+      store(next);
+    } catch (e) {
+      $("#editor-status").textContent = e.message;
+      toast(e.message);
+      return;
+    }
+    clinics = next;
+    openedSnapshot = JSON.stringify(next);
+    Audit.log("setup.change", { action: `Clinic ${draft.name} saved${published ? `; page layout version ${published} published` : ""}` });
     dirty = false;
     $("#editor-status").textContent = "All changes saved";
-    toast(`${draft.name} saved`);
+    toast(published ? `${draft.name} saved. Layout version ${published} is live for new encounters.` : `${draft.name} saved`);
   });
 
   $("#new-clinic").addEventListener("click", () => openEditor(null));
@@ -818,15 +1087,4 @@
 
   // ---------- Settings sections (hash routing: #clinics, #roles) ----------
 
-  function route() {
-    const view = location.hash === "#roles" ? "roles" : "clinics";
-    $("#clinics").hidden = view !== "clinics";
-    $("#roles").hidden = view !== "roles";
-    $$(".settings-nav a").forEach((a) => {
-      if (a.getAttribute("href") === `#${view}`) a.setAttribute("aria-current", "page");
-      else a.removeAttribute("aria-current");
-    });
-  }
-  window.addEventListener("hashchange", route);
-  route();
 })();

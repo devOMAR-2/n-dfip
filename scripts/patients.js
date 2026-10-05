@@ -7,6 +7,10 @@
 // - `null` means "not assessed", never "normal".
 // - Preventive risk (`iwgdfRisk` 0–3) is kept separate from active-problem
 //   urgency (`activeProblem`), as the N-DFIP dossier requires.
+// - `registeredAt` is the facility (org.js) that opened the file; default North Riyadh.
+// - Two files with the same national ID are flagged as possible duplicates (EC-12) and
+//   shown as one patient. Merging is logged and never deletes: the merged file points to
+//   the kept one ("ndfip.patientMerges").
 
 const Patients = (() => {
   const RISK = {
@@ -334,6 +338,32 @@ const Patients = (() => {
       note: "Unstable diabetic foot. Sent to ER for admission and MDT review.",
     },
     {
+      // Same national ID as N-DFIP-004742, opened at the Jeddah facility (EC-12 demo)
+      fileNumber: "N-DFIP-J00917",
+      registeredAt: "fac-jcc",
+      nationalId: "1030123459",
+      phone: "0539012349",
+      name: "Mansour Ibrahim Al Ghamdi",
+      sex: "Male",
+      dob: "1961-08-27",
+      diabetesType: "Type 2",
+      diabetesDurationYears: 18,
+      lastHbA1c: { value: 9.6, date: "2025-11-12" },
+      allergies: ["Penicillin"],
+      riskHistory: { ...noHistory, neuropathy: true },
+      lops: true,
+      pad: false,
+      deformity: null,
+      previousUlcer: { ...noEvents },
+      previousAmputation: null,
+      iwgdfRisk: 1,
+      activeProblem: null,
+      careLevel: "primary",
+      lastVisit: "2025-11-12",
+      nextReview: null,
+      note: "Seen once while visiting Jeddah. Registered without checking for an existing file.",
+    },
+    {
       fileNumber: "N-DFIP-004912",
       nationalId: "2203456782",
       phone: "0572345673",
@@ -403,6 +433,54 @@ const Patients = (() => {
     return records.find((p) => p.fileNumber === fileNumber) || null;
   }
 
+  // ---------- Duplicates and merges (EC-12) ----------
+
+  const MERGES_KEY = "ndfip.patientMerges";
+  const merges = () => (typeof Db !== "undefined" ? Db.read(MERGES_KEY, {}) : {}) ?? {};
+  const isMerged = (fileNumber) => !!merges()[fileNumber];
+
+  // Follows merges to the file that was kept
+  function resolve(fileNumber) {
+    const m = merges();
+    let f = fileNumber;
+    for (let i = 0; i < 10 && m[f]; i++) f = m[f].into;
+    return byFileNumber(f);
+  }
+
+  // Other open files with the same national ID
+  function duplicatesOf(fileNumber) {
+    const p = byFileNumber(fileNumber);
+    if (!p?.nationalId) return [];
+    return records.filter((r) => r.fileNumber !== p.fileNumber && r.nationalId === p.nationalId && !isMerged(r.fileNumber));
+  }
+
+  // Files merged into this one (their history belongs to this patient)
+  const mergedInto = (fileNumber) => Object.entries(merges()).filter(([, m]) => m.into === fileNumber).map(([from]) => from);
+
+  // Every file that belongs to this patient: the file itself and the files merged into it
+  function filesOf(fileNumber) {
+    const out = [fileNumber];
+    for (let i = 0; i < out.length; i++) mergedInto(out[i]).forEach((f) => out.includes(f) || out.push(f));
+    return out;
+  }
+
+  // One row per patient: merged files left out
+  const listed = () => records.filter((r) => !isMerged(r.fileNumber));
+
+  // Merge `from` into `into`. Needs patients.merge. Throws Db.SaveError; returns the entry.
+  function merge(from, into, reason) {
+    if (typeof Access !== "undefined" && !Access.can("patients.merge")) throw new Error("Your role can't merge patient files.");
+    if (!reason?.trim()) throw new Error("Give a reason for the merge.");
+    if (from === into || !byFileNumber(from) || !byFileNumber(into)) throw new Error("Choose two different files.");
+    const u = typeof Access !== "undefined" ? Access.currentUser() : null;
+    const entry = { into, by: u?.name ?? "unknown", at: new Date().toISOString(), reason: reason.trim() };
+    Db.update(MERGES_KEY, {}, (m) => {
+      m[from] = entry;
+    });
+    if (typeof Audit !== "undefined") Audit.log("patient.merge", { patient: into, field: "File", old: from, new: into, reason: reason.trim(), action: `Merged file ${from} into ${into}` });
+    return entry;
+  }
+
   function ageOn(dob, today = new Date()) {
     const birth = new Date(dob);
     let age = today.getFullYear() - birth.getFullYear();
@@ -411,5 +489,8 @@ const Patients = (() => {
     return age;
   }
 
-  return { RISK, ACTIVE_PROBLEM, CARE_LEVEL, all: records, search, byFileNumber, ageOn };
+  return {
+    RISK, ACTIVE_PROBLEM, CARE_LEVEL, all: records, search, byFileNumber, ageOn,
+    listed, resolve, duplicatesOf, filesOf, isMerged, merges, merge,
+  };
 })();

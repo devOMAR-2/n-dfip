@@ -17,6 +17,8 @@ CHEVRON = ('<svg class="form-section__chevron" xmlns="http://www.w3.org/2000/svg
            'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>')
 
 FEET = [('left', 'Left foot'), ('right', 'Right foot')]
+# Sole view: as the clinician faces the patient's soles, the right foot is on the left (UAT F-11)
+SOLE_FEET = [('right', 'Right foot'), ('left', 'Left foot')]
 
 # Field schema: every q_choice / q_number records itself so the review page can
 # render Part 1 findings (labels, options, units) without a hand-kept copy.
@@ -97,10 +99,10 @@ def q_number(label, name, unit, required=True, min_=None, max_=None, step='any',
     return '\n'.join(parts)
 
 
-def foot_grid(render_foot):
+def foot_grid(render_foot, feet=FEET):
     """render_foot(side, label) -> inner html for one foot card."""
     cards = []
-    for side, label in FEET:
+    for side, label in feet:
         cards.append(f'<fieldset class="foot-card">\n  <legend class="foot-card__title">{label}</legend>\n{ind(render_foot(side, label), 2)}\n</fieldset>')
     return '<div class="foot-grid">\n' + ind('\n'.join(cards), 2) + '\n</div>'
 
@@ -141,12 +143,14 @@ def sub(title, body, reveal=None):
 </section>'''
 
 
-def per_foot(fn):
-    return foot_grid(fn)
+def per_foot(fn, feet=FEET):
+    return foot_grid(fn, feet)
 
 
-# ---------- Foot diagrams (static SVG; right foot drawn, left foot mirrored) ----------
-# viewBox 0 0 100 220, hallux on the medial side so the two feet face each other.
+# ---------- Foot diagrams (static SVG; one drawing, mirrored as needed) ----------
+# viewBox 0 0 100 220. The drawing is a right foot seen from above (hallux on the left).
+# Top view: left foot mirrored, shown left then right. Sole view: right foot mirrored,
+# shown right then left. Either way the big toes point to the centre (UAT F-11).
 FOOT_OUTLINE = ('M22,48 C18,62 18,80 22,95 C26,115 30,135 30,155 C30,175 28,190 34,203 '
                 'C40,214 62,214 68,203 C74,190 72,172 74,150 C76,128 86,108 90,88 '
                 'C94,70 92,56 86,50 C72,44 36,42 22,48 Z')
@@ -159,8 +163,12 @@ ZONE_LABEL = dict([("hallux", "Hallux"), ("toe2", "2nd toe"), ("toe3", "3rd toe"
                    ("mth4", "4th metatarsal head"), ("mth5", "5th metatarsal head"), ("midfoot", "Midfoot"), ("heel", "Heel")])
 
 
-def mx(side, x):
-    return round(100 - x, 2) if side == 'left' else x
+def mirrored(side, view):
+    return side == 'right' if view == 'plantar' else side == 'left'
+
+
+def mx(flip, x):
+    return round(100 - x, 2) if flip else x
 
 
 def foot_shapes(view, zones):
@@ -180,8 +188,10 @@ def foot_shapes(view, zones):
 
 
 def foot_svg(side, view, zones, overlay=''):
-    mirror = ' transform="translate(100 0) scale(-1 1)"' if side == 'left' else ''
-    return f"""<svg class="foot-map__svg" viewBox="0 0 100 220" data-side="{side}" data-view="{view}" aria-hidden="true">
+    flip = mirrored(side, view)
+    mirror = ' transform="translate(100 0) scale(-1 1)"' if flip else ''
+    flag = ' data-mirrored' if flip else ''
+    return f"""<svg class="foot-map__svg" viewBox="0 0 100 220" data-side="{side}" data-view="{view}"{flag} aria-hidden="true">
   <g{mirror}>
 {ind(foot_shapes(view, zones), 4)}
   </g>
@@ -195,10 +205,10 @@ SENS_SITES = [('hallux', 'Hallux', 30, 28), ('mth1', '1st metatarsal head', 32, 
 def sensation_map(side, label):
     markers = '\n'.join(
         f'<g class="sens-marker" data-target="c.{side}.{site}" data-site="{esc(site_label)}" role="button" tabindex="0">'
-        f'<circle cx="{mx(side, x)}" cy="{y}" r="8" /><text x="{mx(side, x)}" y="{y}"></text></g>'
+        f'<circle cx="{mx(mirrored(side, "plantar"), x)}" cy="{y}" r="8" /><text x="{mx(mirrored(side, "plantar"), x)}" y="{y}"></text></g>'
         for site, site_label, x, y in SENS_SITES)
     svg = foot_svg(side, 'plantar', False, markers).replace(' aria-hidden="true"', f' role="group" aria-label="{label} sensation sites"')
-    return f'<div class="sens-map">\n{ind(svg, 2)}\n  <p class="field-hint">Tap a site to cycle the result.</p>\n</div>'
+    return f'<div class="sens-map">\n{ind(svg, 2)}\n  <p class="field-hint">Sole view. Tap a site to cycle the result.</p>\n</div>'
 
 
 SENS_LEGEND = '''<ul class="map-legend" aria-hidden="true">
@@ -211,10 +221,11 @@ SENS_LEGEND = '''<ul class="map-legend" aria-hidden="true">
 
 def ulcer_map():
     def view(view_name, title):
+        feet = SOLE_FEET if view_name == 'plantar' else FEET
         figs = '\n'.join(f'''<figure class="ulcer-map__foot">
 {ind(foot_svg(side, view_name, True, '<g class="pin-layer" data-pins></g>'), 2)}
   <figcaption>{label}</figcaption>
-</figure>''' for side, label in FEET)
+</figure>''' for side, label in feet)
         return f'''<div class="ulcer-map__view">
   <p class="ulcer-map__view-title">{title}</p>
   <div class="ulcer-map__feet">
@@ -234,8 +245,8 @@ def ulcer_map():
   </div>
   <p class="field-hint">Tap a toe, metatarsal head, midfoot or heel to place the selected ulcer. You can also choose below.</p>
   <div class="ulcer-map__views">
-{ind(view("plantar", "Plantar (sole)"), 4)}
-{ind(view("dorsal", "Dorsal (top)"), 4)}
+{ind(view("plantar", "Sole view"), 4)}
+{ind(view("dorsal", "Top view"), 4)}
   </div>
 </div>'''
 

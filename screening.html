@@ -4,29 +4,46 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Foot Screening</title>
+    <title>Foot Screening · N-DFIP</title>
     <link rel="stylesheet" href="./styles/shared.css" />
+    <script src="./scripts/db.js"></script>
     <script src="./scripts/auth.js"></script>
+    <script src="./scripts/staff.js"></script>
+    <script src="./scripts/access.js"></script>
+    <script src="./scripts/org.js"></script>
+    <script src="./scripts/audit.js"></script>
+    <script src="./scripts/privacy.js"></script>
+    <script src="./scripts/history-seed.js"></script>
+    <script src="./scripts/referrals.js"></script>
+    <script src="./scripts/tests.js"></script>
+    <script src="./scripts/session.js"></script>
+    <script src="./scripts/privacy-ui.js"></script>
+    <script src="./scripts/notifications.js"></script>
     <script>
       // Not signed in: back to the sign-in page
       if (!Auth.getSessionId()) window.location.replace(Auth.LOGIN_PAGE);
-      // No patient chosen yet: pick one on the clinic page first
-      else {
+      // Needs an encounter (?id= from a queue) or a patient picked on the clinic page
+      else if (!new URLSearchParams(location.search).get("id")) {
         let patient = null;
         try {
           patient = sessionStorage.getItem("ndfip.df.patient");
         } catch {}
         if (!patient) window.location.replace("./diabetic-foot.html");
       }
+      // Role check (F-01): shows a "no access" page instead of the content
+      Access.guardPage(["screening.perform", "screening.pull"], "the screening form");
     </script>
   </head>
   <body>
     <header class="app-header">
-      <a class="app-title" href="./home.html">The Clinical Platform</a>
+      <a class="app-title" href="./home.html" aria-label="N-DFIP, National Diabetic Foot Intelligence Platform, home"><span class="app-title__short">N-DFIP</span><span class="app-title__full">National Diabetic Foot Intelligence Platform</span></a>
 
       <nav class="app-nav" aria-label="Main">
         <a href="./home.html">Home</a>
+        <a href="./patients.html">Patients</a>
+        <a href="./referrals.html">Referrals</a>
         <a href="./dashboard.html">Dashboard</a>
+        <a href="./audit.html">Audit log</a>
         <a href="./settings.html">Settings</a>
       </nav>
 
@@ -242,10 +259,10 @@
               <h3 class="subsection__title"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2" /><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2" /><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8" /><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" /></svg>Protective sensation</h3>
               <div class="foot-grid">
                 <fieldset class="foot-card">
-                  <legend class="foot-card__title">Left foot</legend>
+                  <legend class="foot-card__title">Right foot</legend>
                   <div class="sens-layout">
                     <div class="sens-map">
-                      <svg class="foot-map__svg" viewBox="0 0 100 220" data-side="left" data-view="plantar" role="group" aria-label="Left foot sensation sites">
+                      <svg class="foot-map__svg" viewBox="0 0 100 220" data-side="right" data-view="plantar" data-mirrored role="group" aria-label="Right foot sensation sites">
                         <g transform="translate(100 0) scale(-1 1)">
                           <path class="foot-outline" d="M22,48 C18,62 18,80 22,95 C26,115 30,135 30,155 C30,175 28,190 34,203 C40,214 62,214 68,203 C74,190 72,172 74,150 C76,128 86,108 90,88 C94,70 92,56 86,50 C72,44 36,42 22,48 Z" />
                           <ellipse class="foot-landmark" data-zone="hallux" cx="30" cy="28" rx="11" ry="14"><title>Hallux</title></ellipse>
@@ -261,77 +278,11 @@
                           <ellipse class="foot-landmark" data-zone="midfoot" cx="58" cy="125" rx="18" ry="26"><title>Midfoot</title></ellipse>
                           <ellipse class="foot-landmark" data-zone="heel" cx="51" cy="188" rx="16" ry="17"><title>Heel</title></ellipse>
                         </g>
-                        <g class="sens-marker" data-target="c.left.hallux" data-site="Hallux" role="button" tabindex="0"><circle cx="70" cy="28" r="8" /><text x="70" y="28"></text></g>
-                        <g class="sens-marker" data-target="c.left.mth1" data-site="1st metatarsal head" role="button" tabindex="0"><circle cx="68" cy="66" r="8" /><text x="68" y="66"></text></g>
-                        <g class="sens-marker" data-target="c.left.mth5" data-site="5th metatarsal head" role="button" tabindex="0"><circle cx="17.5" cy="75" r="8" /><text x="17.5" y="75"></text></g>
+                        <g class="sens-marker" data-target="c.right.hallux" data-site="Hallux" role="button" tabindex="0"><circle cx="70" cy="28" r="8" /><text x="70" y="28"></text></g>
+                        <g class="sens-marker" data-target="c.right.mth1" data-site="1st metatarsal head" role="button" tabindex="0"><circle cx="68" cy="66" r="8" /><text x="68" y="66"></text></g>
+                        <g class="sens-marker" data-target="c.right.mth5" data-site="5th metatarsal head" role="button" tabindex="0"><circle cx="17.5" cy="75" r="8" /><text x="17.5" y="75"></text></g>
                       </svg>
-                      <p class="field-hint">Tap a site to cycle the result.</p>
-                    </div>
-                    <div class="sens-layout__fields">
-                      <fieldset class="q" data-required="radio" data-error="Record hallux (plantar), left foot.">
-                        <legend class="label">Hallux (plantar)</legend>
-                        <div class="chips">
-                          <label class="chip"><input type="radio" name="c.left.hallux" value="detected" /><span>Detected</span></label>
-                          <label class="chip"><input type="radio" name="c.left.hallux" value="absent" /><span>Absent</span></label>
-                          <label class="chip"><input type="radio" name="c.left.hallux" value="not-assessed" /><span>Not assessed</span></label>
-                        </div>
-                        <p class="field-error" hidden>
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
-                          <span></span>
-                        </p>
-                      </fieldset>
-                      <fieldset class="q" data-required="radio" data-error="Record 1st metatarsal head, left foot.">
-                        <legend class="label">1st metatarsal head</legend>
-                        <div class="chips">
-                          <label class="chip"><input type="radio" name="c.left.mth1" value="detected" /><span>Detected</span></label>
-                          <label class="chip"><input type="radio" name="c.left.mth1" value="absent" /><span>Absent</span></label>
-                          <label class="chip"><input type="radio" name="c.left.mth1" value="not-assessed" /><span>Not assessed</span></label>
-                        </div>
-                        <p class="field-error" hidden>
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
-                          <span></span>
-                        </p>
-                      </fieldset>
-                      <fieldset class="q" data-required="radio" data-error="Record 5th metatarsal head, left foot.">
-                        <legend class="label">5th metatarsal head</legend>
-                        <div class="chips">
-                          <label class="chip"><input type="radio" name="c.left.mth5" value="detected" /><span>Detected</span></label>
-                          <label class="chip"><input type="radio" name="c.left.mth5" value="absent" /><span>Absent</span></label>
-                          <label class="chip"><input type="radio" name="c.left.mth5" value="not-assessed" /><span>Not assessed</span></label>
-                        </div>
-                        <p class="field-error" hidden>
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
-                          <span></span>
-                        </p>
-                      </fieldset>
-                    </div>
-                  </div>
-                </fieldset>
-                <fieldset class="foot-card">
-                  <legend class="foot-card__title">Right foot</legend>
-                  <div class="sens-layout">
-                    <div class="sens-map">
-                      <svg class="foot-map__svg" viewBox="0 0 100 220" data-side="right" data-view="plantar" role="group" aria-label="Right foot sensation sites">
-                        <g>
-                          <path class="foot-outline" d="M22,48 C18,62 18,80 22,95 C26,115 30,135 30,155 C30,175 28,190 34,203 C40,214 62,214 68,203 C74,190 72,172 74,150 C76,128 86,108 90,88 C94,70 92,56 86,50 C72,44 36,42 22,48 Z" />
-                          <ellipse class="foot-landmark" data-zone="hallux" cx="30" cy="28" rx="11" ry="14"><title>Hallux</title></ellipse>
-                          <ellipse class="foot-landmark" data-zone="toe2" cx="50" cy="20" rx="7" ry="9"><title>2nd toe</title></ellipse>
-                          <ellipse class="foot-landmark" data-zone="toe3" cx="63" cy="24" rx="6.5" ry="8.5"><title>3rd toe</title></ellipse>
-                          <ellipse class="foot-landmark" data-zone="toe4" cx="74" cy="31" rx="6" ry="8"><title>4th toe</title></ellipse>
-                          <ellipse class="foot-landmark" data-zone="toe5" cx="83" cy="41" rx="5.5" ry="7"><title>5th toe</title></ellipse>
-                          <circle class="foot-landmark" data-zone="mth1" cx="32" cy="66" r="9"><title>1st metatarsal head</title></circle>
-                          <circle class="foot-landmark" data-zone="mth2" cx="50" cy="62" r="6.5"><title>2nd metatarsal head</title></circle>
-                          <circle class="foot-landmark" data-zone="mth3" cx="62.5" cy="64" r="5.5"><title>3rd metatarsal head</title></circle>
-                          <circle class="foot-landmark" data-zone="mth4" cx="73.5" cy="68.5" r="5.5"><title>4th metatarsal head</title></circle>
-                          <circle class="foot-landmark" data-zone="mth5" cx="82.5" cy="75" r="5.5"><title>5th metatarsal head</title></circle>
-                          <ellipse class="foot-landmark" data-zone="midfoot" cx="58" cy="125" rx="18" ry="26"><title>Midfoot</title></ellipse>
-                          <ellipse class="foot-landmark" data-zone="heel" cx="51" cy="188" rx="16" ry="17"><title>Heel</title></ellipse>
-                        </g>
-                        <g class="sens-marker" data-target="c.right.hallux" data-site="Hallux" role="button" tabindex="0"><circle cx="30" cy="28" r="8" /><text x="30" y="28"></text></g>
-                        <g class="sens-marker" data-target="c.right.mth1" data-site="1st metatarsal head" role="button" tabindex="0"><circle cx="32" cy="66" r="8" /><text x="32" y="66"></text></g>
-                        <g class="sens-marker" data-target="c.right.mth5" data-site="5th metatarsal head" role="button" tabindex="0"><circle cx="82.5" cy="75" r="8" /><text x="82.5" y="75"></text></g>
-                      </svg>
-                      <p class="field-hint">Tap a site to cycle the result.</p>
+                      <p class="field-hint">Sole view. Tap a site to cycle the result.</p>
                     </div>
                     <div class="sens-layout__fields">
                       <fieldset class="q" data-required="radio" data-error="Record hallux (plantar), right foot.">
@@ -364,6 +315,72 @@
                           <label class="chip"><input type="radio" name="c.right.mth5" value="detected" /><span>Detected</span></label>
                           <label class="chip"><input type="radio" name="c.right.mth5" value="absent" /><span>Absent</span></label>
                           <label class="chip"><input type="radio" name="c.right.mth5" value="not-assessed" /><span>Not assessed</span></label>
+                        </div>
+                        <p class="field-error" hidden>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                          <span></span>
+                        </p>
+                      </fieldset>
+                    </div>
+                  </div>
+                </fieldset>
+                <fieldset class="foot-card">
+                  <legend class="foot-card__title">Left foot</legend>
+                  <div class="sens-layout">
+                    <div class="sens-map">
+                      <svg class="foot-map__svg" viewBox="0 0 100 220" data-side="left" data-view="plantar" role="group" aria-label="Left foot sensation sites">
+                        <g>
+                          <path class="foot-outline" d="M22,48 C18,62 18,80 22,95 C26,115 30,135 30,155 C30,175 28,190 34,203 C40,214 62,214 68,203 C74,190 72,172 74,150 C76,128 86,108 90,88 C94,70 92,56 86,50 C72,44 36,42 22,48 Z" />
+                          <ellipse class="foot-landmark" data-zone="hallux" cx="30" cy="28" rx="11" ry="14"><title>Hallux</title></ellipse>
+                          <ellipse class="foot-landmark" data-zone="toe2" cx="50" cy="20" rx="7" ry="9"><title>2nd toe</title></ellipse>
+                          <ellipse class="foot-landmark" data-zone="toe3" cx="63" cy="24" rx="6.5" ry="8.5"><title>3rd toe</title></ellipse>
+                          <ellipse class="foot-landmark" data-zone="toe4" cx="74" cy="31" rx="6" ry="8"><title>4th toe</title></ellipse>
+                          <ellipse class="foot-landmark" data-zone="toe5" cx="83" cy="41" rx="5.5" ry="7"><title>5th toe</title></ellipse>
+                          <circle class="foot-landmark" data-zone="mth1" cx="32" cy="66" r="9"><title>1st metatarsal head</title></circle>
+                          <circle class="foot-landmark" data-zone="mth2" cx="50" cy="62" r="6.5"><title>2nd metatarsal head</title></circle>
+                          <circle class="foot-landmark" data-zone="mth3" cx="62.5" cy="64" r="5.5"><title>3rd metatarsal head</title></circle>
+                          <circle class="foot-landmark" data-zone="mth4" cx="73.5" cy="68.5" r="5.5"><title>4th metatarsal head</title></circle>
+                          <circle class="foot-landmark" data-zone="mth5" cx="82.5" cy="75" r="5.5"><title>5th metatarsal head</title></circle>
+                          <ellipse class="foot-landmark" data-zone="midfoot" cx="58" cy="125" rx="18" ry="26"><title>Midfoot</title></ellipse>
+                          <ellipse class="foot-landmark" data-zone="heel" cx="51" cy="188" rx="16" ry="17"><title>Heel</title></ellipse>
+                        </g>
+                        <g class="sens-marker" data-target="c.left.hallux" data-site="Hallux" role="button" tabindex="0"><circle cx="30" cy="28" r="8" /><text x="30" y="28"></text></g>
+                        <g class="sens-marker" data-target="c.left.mth1" data-site="1st metatarsal head" role="button" tabindex="0"><circle cx="32" cy="66" r="8" /><text x="32" y="66"></text></g>
+                        <g class="sens-marker" data-target="c.left.mth5" data-site="5th metatarsal head" role="button" tabindex="0"><circle cx="82.5" cy="75" r="8" /><text x="82.5" y="75"></text></g>
+                      </svg>
+                      <p class="field-hint">Sole view. Tap a site to cycle the result.</p>
+                    </div>
+                    <div class="sens-layout__fields">
+                      <fieldset class="q" data-required="radio" data-error="Record hallux (plantar), left foot.">
+                        <legend class="label">Hallux (plantar)</legend>
+                        <div class="chips">
+                          <label class="chip"><input type="radio" name="c.left.hallux" value="detected" /><span>Detected</span></label>
+                          <label class="chip"><input type="radio" name="c.left.hallux" value="absent" /><span>Absent</span></label>
+                          <label class="chip"><input type="radio" name="c.left.hallux" value="not-assessed" /><span>Not assessed</span></label>
+                        </div>
+                        <p class="field-error" hidden>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                          <span></span>
+                        </p>
+                      </fieldset>
+                      <fieldset class="q" data-required="radio" data-error="Record 1st metatarsal head, left foot.">
+                        <legend class="label">1st metatarsal head</legend>
+                        <div class="chips">
+                          <label class="chip"><input type="radio" name="c.left.mth1" value="detected" /><span>Detected</span></label>
+                          <label class="chip"><input type="radio" name="c.left.mth1" value="absent" /><span>Absent</span></label>
+                          <label class="chip"><input type="radio" name="c.left.mth1" value="not-assessed" /><span>Not assessed</span></label>
+                        </div>
+                        <p class="field-error" hidden>
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+                          <span></span>
+                        </p>
+                      </fieldset>
+                      <fieldset class="q" data-required="radio" data-error="Record 5th metatarsal head, left foot.">
+                        <legend class="label">5th metatarsal head</legend>
+                        <div class="chips">
+                          <label class="chip"><input type="radio" name="c.left.mth5" value="detected" /><span>Detected</span></label>
+                          <label class="chip"><input type="radio" name="c.left.mth5" value="absent" /><span>Absent</span></label>
+                          <label class="chip"><input type="radio" name="c.left.mth5" value="not-assessed" /><span>Not assessed</span></label>
                         </div>
                         <p class="field-error" hidden>
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
@@ -1250,32 +1267,11 @@
                 <p class="field-hint">Tap a toe, metatarsal head, midfoot or heel to place the selected ulcer. You can also choose below.</p>
                 <div class="ulcer-map__views">
                   <div class="ulcer-map__view">
-                    <p class="ulcer-map__view-title">Plantar (sole)</p>
+                    <p class="ulcer-map__view-title">Sole view</p>
                     <div class="ulcer-map__feet">
                       <figure class="ulcer-map__foot">
-                        <svg class="foot-map__svg" viewBox="0 0 100 220" data-side="left" data-view="plantar" aria-hidden="true">
+                        <svg class="foot-map__svg" viewBox="0 0 100 220" data-side="right" data-view="plantar" data-mirrored aria-hidden="true">
                           <g transform="translate(100 0) scale(-1 1)">
-                            <path class="foot-outline" d="M22,48 C18,62 18,80 22,95 C26,115 30,135 30,155 C30,175 28,190 34,203 C40,214 62,214 68,203 C74,190 72,172 74,150 C76,128 86,108 90,88 C94,70 92,56 86,50 C72,44 36,42 22,48 Z" />
-                            <ellipse class="foot-zone" data-zone="hallux" cx="30" cy="28" rx="11" ry="14"><title>Hallux</title></ellipse>
-                            <ellipse class="foot-zone" data-zone="toe2" cx="50" cy="20" rx="7" ry="9"><title>2nd toe</title></ellipse>
-                            <ellipse class="foot-zone" data-zone="toe3" cx="63" cy="24" rx="6.5" ry="8.5"><title>3rd toe</title></ellipse>
-                            <ellipse class="foot-zone" data-zone="toe4" cx="74" cy="31" rx="6" ry="8"><title>4th toe</title></ellipse>
-                            <ellipse class="foot-zone" data-zone="toe5" cx="83" cy="41" rx="5.5" ry="7"><title>5th toe</title></ellipse>
-                            <circle class="foot-zone" data-zone="mth1" cx="32" cy="66" r="9"><title>1st metatarsal head</title></circle>
-                            <circle class="foot-zone" data-zone="mth2" cx="50" cy="62" r="6.5"><title>2nd metatarsal head</title></circle>
-                            <circle class="foot-zone" data-zone="mth3" cx="62.5" cy="64" r="5.5"><title>3rd metatarsal head</title></circle>
-                            <circle class="foot-zone" data-zone="mth4" cx="73.5" cy="68.5" r="5.5"><title>4th metatarsal head</title></circle>
-                            <circle class="foot-zone" data-zone="mth5" cx="82.5" cy="75" r="5.5"><title>5th metatarsal head</title></circle>
-                            <ellipse class="foot-zone" data-zone="midfoot" cx="58" cy="125" rx="18" ry="26"><title>Midfoot</title></ellipse>
-                            <ellipse class="foot-zone" data-zone="heel" cx="51" cy="188" rx="16" ry="17"><title>Heel</title></ellipse>
-                          </g>
-                          <g class="pin-layer" data-pins></g>
-                        </svg>
-                        <figcaption>Left foot</figcaption>
-                      </figure>
-                      <figure class="ulcer-map__foot">
-                        <svg class="foot-map__svg" viewBox="0 0 100 220" data-side="right" data-view="plantar" aria-hidden="true">
-                          <g>
                             <path class="foot-outline" d="M22,48 C18,62 18,80 22,95 C26,115 30,135 30,155 C30,175 28,190 34,203 C40,214 62,214 68,203 C74,190 72,172 74,150 C76,128 86,108 90,88 C94,70 92,56 86,50 C72,44 36,42 22,48 Z" />
                             <ellipse class="foot-zone" data-zone="hallux" cx="30" cy="28" rx="11" ry="14"><title>Hallux</title></ellipse>
                             <ellipse class="foot-zone" data-zone="toe2" cx="50" cy="20" rx="7" ry="9"><title>2nd toe</title></ellipse>
@@ -1294,13 +1290,34 @@
                         </svg>
                         <figcaption>Right foot</figcaption>
                       </figure>
+                      <figure class="ulcer-map__foot">
+                        <svg class="foot-map__svg" viewBox="0 0 100 220" data-side="left" data-view="plantar" aria-hidden="true">
+                          <g>
+                            <path class="foot-outline" d="M22,48 C18,62 18,80 22,95 C26,115 30,135 30,155 C30,175 28,190 34,203 C40,214 62,214 68,203 C74,190 72,172 74,150 C76,128 86,108 90,88 C94,70 92,56 86,50 C72,44 36,42 22,48 Z" />
+                            <ellipse class="foot-zone" data-zone="hallux" cx="30" cy="28" rx="11" ry="14"><title>Hallux</title></ellipse>
+                            <ellipse class="foot-zone" data-zone="toe2" cx="50" cy="20" rx="7" ry="9"><title>2nd toe</title></ellipse>
+                            <ellipse class="foot-zone" data-zone="toe3" cx="63" cy="24" rx="6.5" ry="8.5"><title>3rd toe</title></ellipse>
+                            <ellipse class="foot-zone" data-zone="toe4" cx="74" cy="31" rx="6" ry="8"><title>4th toe</title></ellipse>
+                            <ellipse class="foot-zone" data-zone="toe5" cx="83" cy="41" rx="5.5" ry="7"><title>5th toe</title></ellipse>
+                            <circle class="foot-zone" data-zone="mth1" cx="32" cy="66" r="9"><title>1st metatarsal head</title></circle>
+                            <circle class="foot-zone" data-zone="mth2" cx="50" cy="62" r="6.5"><title>2nd metatarsal head</title></circle>
+                            <circle class="foot-zone" data-zone="mth3" cx="62.5" cy="64" r="5.5"><title>3rd metatarsal head</title></circle>
+                            <circle class="foot-zone" data-zone="mth4" cx="73.5" cy="68.5" r="5.5"><title>4th metatarsal head</title></circle>
+                            <circle class="foot-zone" data-zone="mth5" cx="82.5" cy="75" r="5.5"><title>5th metatarsal head</title></circle>
+                            <ellipse class="foot-zone" data-zone="midfoot" cx="58" cy="125" rx="18" ry="26"><title>Midfoot</title></ellipse>
+                            <ellipse class="foot-zone" data-zone="heel" cx="51" cy="188" rx="16" ry="17"><title>Heel</title></ellipse>
+                          </g>
+                          <g class="pin-layer" data-pins></g>
+                        </svg>
+                        <figcaption>Left foot</figcaption>
+                      </figure>
                     </div>
                   </div>
                   <div class="ulcer-map__view">
-                    <p class="ulcer-map__view-title">Dorsal (top)</p>
+                    <p class="ulcer-map__view-title">Top view</p>
                     <div class="ulcer-map__feet">
                       <figure class="ulcer-map__foot">
-                        <svg class="foot-map__svg" viewBox="0 0 100 220" data-side="left" data-view="dorsal" aria-hidden="true">
+                        <svg class="foot-map__svg" viewBox="0 0 100 220" data-side="left" data-view="dorsal" data-mirrored aria-hidden="true">
                           <g transform="translate(100 0) scale(-1 1)">
                             <path class="foot-outline" d="M22,48 C18,62 18,80 22,95 C26,115 30,135 30,155 C30,175 28,190 34,203 C40,214 62,214 68,203 C74,190 72,172 74,150 C76,128 86,108 90,88 C94,70 92,56 86,50 C72,44 36,42 22,48 Z" />
                             <ellipse class="foot-zone" data-zone="hallux" cx="30" cy="28" rx="11" ry="14"><title>Hallux</title></ellipse>
@@ -1563,6 +1580,11 @@
     <script src="./scripts/user-menu.js"></script>
     <script src="./scripts/patients.js"></script>
     <script src="./scripts/screening-store.js"></script>
+    <script src="./scripts/screening-schema.js"></script>
+    <script src="./scripts/review-schema.js"></script>
+    <script src="./scripts/layout.js"></script>
+    <script src="./scripts/drafts.js"></script>
+    <script src="./scripts/encounters-ui.js"></script>
     <script src="./scripts/screening.js"></script>
     <script src="./scripts/foot-map.js"></script>
   </body>

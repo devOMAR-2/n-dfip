@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Staff · N-DFIP</title>
+    <link rel="stylesheet" href="./styles/shared.css" />
+    <script src="./scripts/db.js"></script>
+    <script src="./scripts/auth.js"></script>
+    <script src="./scripts/staff.js"></script>
+    <script src="./scripts/access.js"></script>
+    <script src="./scripts/org.js"></script>
+    <script src="./scripts/audit.js"></script>
+    <script src="./scripts/privacy.js"></script>
+    <script src="./scripts/history-seed.js"></script>
+    <script src="./scripts/referrals.js"></script>
+    <script src="./scripts/tests.js"></script>
+    <script src="./scripts/session.js"></script>
+    <script src="./scripts/privacy-ui.js"></script>
+    <script src="./scripts/notifications.js"></script>
+    <script>
+      // Not signed in: back to the sign-in page
+      if (!Auth.getSessionId()) window.location.replace(Auth.LOGIN_PAGE);
+      // Role check (F-01): shows a "no access" page instead of the content
+      Access.guardPage(["staff.view"], "staff profiles");
+    </script>
+  </head>
+  <body>
+    <header class="app-header">
+      <a class="app-title" href="./home.html" aria-label="N-DFIP, National Diabetic Foot Intelligence Platform, home"><span class="app-title__short">N-DFIP</span><span class="app-title__full">National Diabetic Foot Intelligence Platform</span></a>
+
+      <nav class="app-nav" aria-label="Main">
+        <a href="./home.html">Home</a>
+        <a href="./patients.html">Patients</a>
+        <a href="./referrals.html">Referrals</a>
+        <a href="./dashboard.html">Dashboard</a>
+        <a href="./audit.html">Audit log</a>
+        <a href="./settings.html">Settings</a>
+      </nav>
+
+      <div class="user-menu">
+        <button
+          type="button"
+          class="avatar-button"
+          id="user-menu-button"
+          aria-haspopup="menu"
+          aria-expanded="false"
+          aria-controls="user-menu"
+          aria-label="Open user menu"
+        >
+          <span id="user-initials">?</span>
+        </button>
+
+        <div class="menu" id="user-menu" role="menu" aria-labelledby="user-menu-button" hidden>
+          <button type="button" class="menu-item" role="menuitem" data-action="account">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+            Account
+          </button>
+          <button type="button" class="menu-item" role="menuitem" data-action="settings">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
+            Settings
+          </button>
+          <hr class="menu-separator" role="separator" />
+          <button type="button" class="menu-item menu-item--destructive" role="menuitem" data-action="logout">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></svg>
+            Log out
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-content">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="./home.html">Home</a>
+        <span aria-hidden="true">/</span>
+        <a href="./staff.html" id="crumb-staff">Staff</a>
+        <span aria-hidden="true" id="crumb-sep" hidden>/</span>
+        <span aria-current="page" id="crumb-current" hidden></span>
+      </nav>
+
+      <!-- Directory and staff dashboard -->
+      <div id="staff-home">
+        <div class="page-header">
+          <h1 class="page-title">Staff</h1>
+          <p class="page-subtitle" id="staff-scope"></p>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="Staff views">
+          <a class="tab" role="tab" href="#directory" id="tab-directory" aria-selected="true">Directory</a>
+          <a class="tab" role="tab" href="#dashboard" id="tab-dashboard" aria-selected="false">Staff dashboard</a>
+        </div>
+
+        <section class="page-section" id="view-directory" aria-labelledby="tab-directory">
+          <div class="staff-search">
+            <div class="q">
+              <label class="label" for="staff-q">Search</label>
+              <input class="input" id="staff-q" type="search" placeholder="Name or title" autocomplete="off" />
+            </div>
+            <div class="q">
+              <label class="label" for="staff-role">Role</label>
+              <select class="input select" id="staff-role"></select>
+            </div>
+          </div>
+          <p class="field-hint" id="staff-count" aria-live="polite"></p>
+          <div class="staff-grid" id="staff-grid"></div>
+        </section>
+
+        <section class="page-section" id="view-dashboard" aria-labelledby="tab-dashboard" hidden>
+          <section class="filter-bar" aria-label="Date range">
+            <div class="filter-bar__row">
+              <span class="filter-bar__label"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" /></svg>Date range</span>
+              <div class="preset-group" role="group" aria-label="Date range presets">
+                <button type="button" class="preset" data-staff-preset="7d" aria-pressed="false">Last 7 days</button>
+                <button type="button" class="preset" data-staff-preset="30d" aria-pressed="true">Last 30 days</button>
+                <button type="button" class="preset" data-staff-preset="90d" aria-pressed="false">Last 90 days</button>
+                <button type="button" class="preset" data-staff-preset="12m" aria-pressed="false">Last 12 months</button>
+              </div>
+            </div>
+            <p class="field-hint" id="staff-range"></p>
+          </section>
+          <div class="dash-card">
+            <div class="page-header page-header--split">
+              <div>
+                <h2 class="section-title">Four figures per practitioner</h2>
+                <p class="field-hint">Patients served, encounters signed, average review time (opening the file to signing), and tests and referrals ordered. Demo data, generated for illustration.</p>
+              </div>
+              <button type="button" class="btn btn-outline" id="staff-export">Export CSV</button>
+            </div>
+            <div class="dash-states" id="staff-dash-state" hidden></div>
+            <div class="dash-content" id="staff-dash-content"></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- One profile -->
+      <div id="staff-profile" hidden></div>
+    </main>
+
+    <script src="./scripts/user-menu.js"></script>
+    <script src="./scripts/screening-store.js"></script>
+    <script src="./scripts/dashboard-data.js"></script>
+    <script src="./scripts/charts.js"></script>
+    <script src="./scripts/dashboard.js"></script>
+    <script src="./scripts/staff-page.js"></script>
+  </body>
+</html>

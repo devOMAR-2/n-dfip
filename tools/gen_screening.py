@@ -83,7 +83,7 @@ def c_vibration(side, label):
 begin("C")
 c_body = '\n\n'.join([
     sub("Test method", q_choice("Sensation test method", "c.method", [("monofilament", "10 g monofilament"), ("light-touch", "Light touch (no monofilament)")], error="Choose the test method.", hint="Light touch: fingertip on each toe tip for 1–2 s (MOH fallback when no monofilament or tuning fork).")),
-    sub("Protective sensation", per_foot(c_sensation) + '\n' + SENS_LEGEND),
+    sub("Protective sensation", per_foot(c_sensation, SOLE_FEET) + '\n' + SENS_LEGEND),
     sub("Vibration", per_foot(c_vibration)),
     sub("Neuropathic symptoms", f'''{q_choice("Symptoms reported", "c.symptoms", [
     ("numbness", "Numbness"),
@@ -398,6 +398,11 @@ main = f'''    <main class="page-content page-content--with-actions">
     <script src="./scripts/user-menu.js"></script>
     <script src="./scripts/patients.js"></script>
     <script src="./scripts/screening-store.js"></script>
+    <script src="./scripts/screening-schema.js"></script>
+    <script src="./scripts/review-schema.js"></script>
+    <script src="./scripts/layout.js"></script>
+    <script src="./scripts/drafts.js"></script>
+    <script src="./scripts/encounters-ui.js"></script>
     <script src="./scripts/screening.js"></script>
     <script src="./scripts/foot-map.js"></script>
   </body>
@@ -420,8 +425,10 @@ fields = [f for f in SCHEMA if not f['name'].startswith('_')] + manual
 SECTIONS = {'A': 'Patient & Encounter', 'B': 'Risk History', 'C': 'Neurological Findings', 'D': 'Vascular Bedside Signs',
             'E': 'Perfusion Measurements', 'F': 'Deformity, Skin', 'G': 'Nail & Footwear', 'H': 'Charcot Red-flag Screen',
             'I': 'Previous Ulcer / Amputation History', 'J': 'Wounds'}
+DIAGRAM = {'outline': FOOT_OUTLINE, 'toes': TOES, 'mths': MTHS,
+           'midfoot': [58, 125, 18, 26], 'heel': [51, 188, 16, 17], 'labels': ZONE_LABEL}
 schema_js = ('// GENERATED from the screening form generator. Do not edit by hand.' + chr(10)
              + '// Part 1 (nurse) field definitions, used by the practitioner review page.' + chr(10)
-             + 'const ScreeningSchema = ' + json.dumps({'sections': SECTIONS, 'fields': fields}, ensure_ascii=False, indent=1) + ';' + chr(10))
+             + 'const ScreeningSchema = ' + json.dumps({'sections': SECTIONS, 'fields': fields, 'footDiagram': DIAGRAM}, ensure_ascii=False, indent=1) + ';' + chr(10))
 open(ROOT + 'scripts/screening-schema.js', 'w', encoding='utf-8', newline='').write(schema_js)
 print('schema fields', len(fields))

@@ -1,6 +1,7 @@
-// Settings › Roles & permissions: roles, permission matrix and staff role assignment.
-// Demo UI only: saved to localStorage, not enforced on live pages.
-// Needs auth.js and staff.js.
+// Settings › Roles & permissions: roles and the permission matrix.
+// Live pages read these roles (access.js). Staff role assignment lives in Settings › Staff
+// (settings-staff.js, stored through Staff.set). Saves are audit-logged (UAT-05).
+// Needs db, auth, staff, access, audit.
 
 (() => {
   const KEY = "ndfip.roles";
@@ -27,29 +28,37 @@
         { id: "patients.view", label: "View patient records", desc: "Open the patient summary and history." },
         { id: "patients.search", label: "Search patients", desc: "By file number, national ID or phone.", requires: ["patients.view"] },
         { id: "patients.edit", label: "Edit patient details", desc: "Demographics and contact details (registration).", requires: ["patients.view"] },
+        { id: "patients.merge", label: "Merge duplicate patient files", desc: "Two files with the same national ID. Logged; nothing is deleted.", requires: ["patients.view"] },
+        { id: "privacy.emergency", label: "Emergency access to hidden records", desc: "Open a hidden record by giving a reason. Logged and flagged for review.", requires: ["patients.view"] },
       ],
     },
     {
       id: "screening", title: "Screening", perms: [
         { id: "screening.perform", label: "Perform screening", desc: "Fill in Part 1 in the screening room and send it for review.", requires: ["patients.view"] },
         { id: "screening.editOwn", label: "Edit own screening until review starts", desc: "Locked once a practitioner opens the case.", requires: ["screening.perform"] },
+        { id: "screening.pull", label: "Complete the nurse part for files not yet sent", desc: "Open a file at stage 1 or 2 and fill in or edit the screening. Recorded in the audit log.", requires: ["patients.view"] },
       ],
     },
     {
       id: "review", title: "Practitioner review", perms: [
         { id: "review.queue", label: "Open review queue", desc: "See screenings awaiting review and open them, including the nurse findings.", requires: ["patients.view"] },
         { id: "review.correct", label: "Correct nurse findings", desc: "Changes are timestamped; the original value stays visible.", requires: ["review.queue"] },
-        { id: "review.decide", label: "Confirm or override recommendations", desc: "Risk category, classifications and escalation flags.", requires: ["review.queue"] },
+        { id: "review.decide", label: "Make clinical decisions", desc: "Confirm or override recommendations: risk category, classifications and escalation flags.", requires: ["review.queue"] },
+        { id: "medication.prescribe", label: "Prescribe medication", desc: "Edit the medication section of the encounter.", requires: ["review.queue"] },
         { id: "review.orders", label: "Place orders", desc: "Laboratory, imaging and referral orders.", requires: ["review.queue"] },
         { id: "review.referral", label: "Make referral decisions", desc: "Destination, urgency and timing.", requires: ["review.queue"] },
         { id: "review.signoff", label: "Sign off reviews", desc: "Final sign-off locks the review and the clinical note.", requires: ["review.decide"] },
-        { id: "review.reopen", label: "Reopen signed reviews", desc: "Unlock a signed review for amendment.", requires: ["review.signoff"] },
+        { id: "review.reopen", label: "Reopen signed encounters", desc: "Reopen with a reason. The signed version stays in the history.", requires: ["patients.view"] },
+        { id: "tests.approve", label: "Approve tests", desc: "Approve or reject tests that need approval; record insurance decisions." },
+        { id: "referrals.track", label: "Track referrals", desc: "See referrals and update their status (received, attended, closed)." },
+        { id: "lock.release", label: "Release editing locks", desc: "Free a file another user holds, with a reason. Logged." },
       ],
     },
     {
       id: "documents", title: "Notes & records", perms: [
         { id: "notes.print", label: "Print notes and patient instructions", desc: "", requires: ["patients.view"] },
-        { id: "audit.view", label: "View audit trail", desc: "Who changed what, and when." },
+        { id: "audit.view", label: "View audit log", desc: "Who did what, and when, within the user's assigned units." },
+        { id: "staff.view", label: "View staff profiles", desc: "Profiles and the staff dashboard." },
       ],
     },
     {
@@ -62,7 +71,11 @@
       id: "admin", title: "Administration", perms: [
         { id: "admin.clinics", label: "Manage clinics and steps", desc: "Clinic details, team, step order and questions." },
         { id: "admin.roles", label: "Manage roles and permissions", desc: "This page." },
-        { id: "admin.users", label: "Manage staff accounts", desc: "Add staff, assign roles, deactivate accounts." },
+        { id: "admin.users", label: "Manage staff accounts", desc: "Add staff, assign roles, password resets, deactivate accounts." },
+        { id: "admin.org", label: "Manage organisation structure", desc: "Regions, facilities, departments, clinics and staff assignments." },
+        { id: "admin.privacy", label: "Manage data visibility", desc: "Hidden, masked or visible per role (PDPL)." },
+        { id: "clinic.setup", label: "Clinic setup", desc: "Page layout, tabs, sections, question placement, tests and approval rules." },
+        { id: "admin.system", label: "System settings", desc: "File rules and test tools (simulated errors, session length)." },
       ],
     },
   ];
@@ -72,41 +85,22 @@
 
   // Defaults: nurses screen and don't review; practitioners review and don't screen;
   // administrators manage the platform but don't make clinical decisions (N-DFIP dossier).
-  const DEFAULT_ROLES = [
-    {
-      id: "admin", name: "Administrator", system: true,
-      description: "Manages clinics, staff and settings. Does not edit clinical decisions.",
-      perms: ["patients.view", "patients.search", "patients.edit", "audit.view", "reports.clinic", "admin.clinics", "admin.roles", "admin.users"],
-    },
-    {
-      id: "nurse", name: "Screening Nurse", system: true,
-      description: "Prepares the encounter: records the Part 1 screening before the practitioner sees the patient.",
-      perms: ["patients.view", "patients.search", "screening.perform", "screening.editOwn"],
-    },
-    {
-      id: "practitioner", name: "Practitioner", system: true,
-      description: "Reviews screenings, decides the plan, orders and referrals, and signs off.",
-      perms: ["patients.view", "patients.search", "review.queue", "review.correct", "review.decide", "review.orders", "review.referral", "review.signoff", "notes.print", "reports.clinic"],
-    },
-  ];
+  // Defaults are shared with the live pages (access.js)
+  const DEFAULT_ROLES = Access.DEFAULT_ROLES;
 
   // Guardrail: someone must always be able to manage roles
   const LOCKED = { admin: ["admin.roles"] };
   const isLocked = (roleId, permId) => LOCKED[roleId]?.includes(permId) ?? false;
 
   function defaults() {
-    return {
-      roles: clone(DEFAULT_ROLES),
-      staff: StaffDirectory.map((s) => ({ id: s.id, name: s.name, title: s.title, role: s.role, active: true })),
-    };
+    return { roles: clone(DEFAULT_ROLES) };
   }
 
+  // Saved roles, plus any built-in role added since they were saved (same as access.js)
   function load() {
-    try {
-      const saved = JSON.parse(localStorage.getItem(KEY) || "null");
-      if (saved?.roles?.length) return saved;
-    } catch {}
-    return defaults();
+    const saved = Db.read(KEY, null);
+    if (!saved?.roles?.length) return defaults();
+    return { roles: [...saved.roles, ...clone(DEFAULT_ROLES).filter((d) => !saved.roles.some((r) => r.id === d.id))] };
   }
 
   let saved = load();
@@ -114,8 +108,8 @@
   let selected = state.roles[0].id;
   let tab = "roles";
 
-  const me = Auth.findUser(Auth.getSessionId());
-  const isAdmin = me?.role === "admin";
+  const me = Access.currentUser();
+  const isAdmin = Access.can("admin.roles");
 
   const dirty = () => JSON.stringify(state) !== JSON.stringify(saved);
   function updateStatus(message) {
@@ -132,7 +126,8 @@
   }
 
   const roleById = (id) => state.roles.find((r) => r.id === id);
-  const membersOf = (id) => state.staff.filter((s) => s.role === id);
+  // Members come from the live staff directory (Settings › Staff)
+  const membersOf = (id) => Staff.list().filter((s) => s.role === id && s.status !== "disabled");
 
   // Turn a permission on/off, keeping prerequisites consistent
   function setPerm(role, permId, on) {
@@ -151,7 +146,8 @@
       dependentsOf(id).forEach(disable);
     };
     on ? enable(permId) : disable(permId);
-    role.perms = PERMS.map((p) => p.id).filter((id) => set.has(id));
+    // Keep permissions this catalogue doesn't list yet, so a toggle never drops them
+    role.perms = [...PERMS.map((p) => p.id).filter((id) => set.has(id)), ...[...set].filter((id) => !PERM[id])];
     return changed.filter((id) => id !== permId);
   }
 
@@ -246,23 +242,25 @@
     descWrap.append(descLabel, desc);
 
     const members = membersOf(role.id);
-    const memberLine = el("p", "field-hint", members.length ? `Members: ${members.map((m) => m.name).join(", ")}` : "No members yet. Assign staff in the Staff tab.");
+    const memberLine = el("p", "field-hint", members.length ? `Members: ${members.map((m) => m.name).join(", ")}` : "No members yet. Assign staff in Settings › Staff.");
 
     head.append(nameWrap, descWrap, memberLine);
+    // EC-09: a role is never deleted; a deactivated role grants nothing and can't be assigned
     if (!role.system && isAdmin) {
-      const del = el("button", "btn btn-outline btn-sm", "Delete role");
+      const off = role.status === "deactivated";
+      const del = el("button", "btn btn-outline btn-sm", off ? "Reactivate role" : "Deactivate role");
       del.type = "button";
       del.addEventListener("click", () => {
-        if (members.length) {
-          toast(`Move ${plural(members.length, "member")} to another role first`);
+        if (!off && members.length) {
+          toast(`Move ${plural(members.length, "member")} to another role first (Settings › Staff)`);
           return;
         }
-        state.roles = state.roles.filter((r) => r.id !== role.id);
-        selected = state.roles[0].id;
+        role.status = off ? "active" : "deactivated";
         render();
         updateStatus();
       });
       head.append(del);
+      if (off) head.append(el("p", "field-hint", "Deactivated: grants no permissions. Kept so past records still show the role."));
     }
     host.append(head);
 
@@ -344,61 +342,17 @@
   }
 
   // ---------- Staff tab ----------
+  // Staff accounts and their roles are managed in Settings › Staff (#staff)
 
   function renderStaff() {
-    const table = el("table", "data-table staff-table");
-    const thead = el("thead");
-    const hr = el("tr");
-    ["Name", "Employee ID", "Title", "Role", "Active"].forEach((h) => hr.append(el("th", "", h)));
-    thead.append(hr);
-    const tbody = el("tbody");
-    const adminCount = state.staff.filter((s) => s.role === "admin" && s.active).length;
-    for (const person of state.staff) {
-      const tr = el("tr");
-      const nameCell = el("th");
-      nameCell.scope = "row";
-      const initials = person.name.split(" ").filter((_, i, a) => i === 0 || i === a.length - 1).map((p) => p[0]).join("");
-      const who = el("span", "staff-table__name");
-      who.append(el("span", "staff-option__avatar", initials), el("span", "", person.name));
-      nameCell.append(who);
-      tr.append(nameCell, el("td", "", person.id), el("td", "", person.title));
-
-      const roleCell = el("td");
-      const select = el("select", "input select");
-      select.setAttribute("aria-label", `Role for ${person.name}`);
-      state.roles.forEach((r) => select.append(new Option(r.name || "Untitled role", r.id, false, r.id === person.role)));
-      // Keep at least one active administrator
-      const lastAdmin = person.role === "admin" && person.active && adminCount === 1;
-      select.disabled = lastAdmin;
-      select.addEventListener("change", () => {
-        person.role = select.value;
-        render();
-        updateStatus();
-        $(`#staff-table select[aria-label="Role for ${person.name}"]`)?.focus();
-      });
-      roleCell.append(select);
-      if (lastAdmin) roleCell.append(el("p", "field-hint", "Last administrator"));
-      tr.append(roleCell);
-
-      const activeCell = el("td");
-      const sw = el("input", "switch");
-      sw.type = "checkbox";
-      sw.setAttribute("role", "switch");
-      sw.setAttribute("aria-label", `${person.name} active`);
-      sw.checked = person.active;
-      sw.disabled = lastAdmin;
-      sw.addEventListener("change", () => {
-        person.active = sw.checked;
-        render();
-        updateStatus();
-      });
-      activeCell.append(sw);
-      tr.append(activeCell);
-      if (!person.active) tr.classList.add("staff-table__inactive");
-      tbody.append(tr);
-    }
-    table.append(thead, tbody);
-    $("#staff-table").replaceChildren(table);
+    const box = el("div", "roles-staff-pointer");
+    const counts = state.roles.map((r) => `${r.name || "Untitled role"}: ${membersOf(r.id).length}`).join(" · ");
+    box.append(el("p", "", "Who has which role is set per person in Settings › Staff, together with password resets and disabling accounts."));
+    box.append(el("p", "field-hint", counts));
+    const a = el("a", "btn btn-outline btn-sm", "Open Staff");
+    a.href = "#staff";
+    box.append(a);
+    $("#staff-table").replaceChildren(box);
   }
 
   // ---------- Render / save ----------
@@ -447,12 +401,39 @@
       updateStatus("Fix the highlighted field before saving");
       return;
     }
-    saved = clone(state);
     try {
-      localStorage.setItem(KEY, JSON.stringify(saved));
-    } catch {}
+      Db.write(KEY, { roles: state.roles }, { where: "roles and permissions" });
+    } catch (e) {
+      updateStatus(e?.message ?? "The changes couldn't be saved. Try again.");
+      return;
+    }
+    // UAT-05: one audit entry per role that changed, with the permissions added and removed
+    const label = (id) => PERM[id]?.label ?? id;
+    for (const role of state.roles) {
+      const before = saved.roles.find((r) => r.id === role.id);
+      if (!before) {
+        Audit.log("permission.change", { clinicId: "", facilityId: "", record: `Role ${role.name}`, action: `Role created: ${role.name}`, new: role.perms.map(label).join(", ") });
+        continue;
+      }
+      const added = role.perms.filter((x) => !before.perms.includes(x));
+      const removed = before.perms.filter((x) => !role.perms.includes(x));
+      if (added.length || removed.length) {
+        Audit.log("permission.change", {
+          clinicId: "", facilityId: "", record: `Role ${role.name}`, action: `Permissions changed for ${role.name}`, field: "Permissions",
+          old: removed.length ? `Removed: ${removed.map(label).join(", ")}` : null,
+          new: added.length ? `Granted: ${added.map(label).join(", ")}` : null,
+        });
+      }
+      if ((before.status ?? "active") !== (role.status ?? "active")) {
+        Audit.log("permission.change", { clinicId: "", facilityId: "", record: `Role ${role.name}`, action: `Role ${role.status === "deactivated" ? "deactivated" : "reactivated"}: ${role.name}` });
+      }
+      if (before.name !== role.name || before.description !== role.description) {
+        Audit.log("permission.change", { clinicId: "", facilityId: "", record: `Role ${role.name}`, action: `Role details changed: ${role.name}`, field: "Name", old: before.name, new: role.name });
+      }
+    }
+    saved = clone(state);
     updateStatus();
-    toast("Roles and permissions saved");
+    toast("Roles and permissions saved. They apply on each user's next action.");
   });
 
   showTab("roles");

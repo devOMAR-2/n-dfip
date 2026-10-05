@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Patient file · N-DFIP</title>
+    <link rel="stylesheet" href="./styles/shared.css" />
+    <script src="./scripts/db.js"></script>
+    <script src="./scripts/auth.js"></script>
+    <script src="./scripts/staff.js"></script>
+    <script src="./scripts/access.js"></script>
+    <script src="./scripts/org.js"></script>
+    <script src="./scripts/audit.js"></script>
+    <script src="./scripts/privacy.js"></script>
+    <script src="./scripts/history-seed.js"></script>
+    <script src="./scripts/referrals.js"></script>
+    <script src="./scripts/tests.js"></script>
+    <script src="./scripts/session.js"></script>
+    <script src="./scripts/privacy-ui.js"></script>
+    <script src="./scripts/notifications.js"></script>
+    <script>
+      // Not signed in: back to the sign-in page
+      if (!Auth.getSessionId()) window.location.replace(Auth.LOGIN_PAGE);
+      // Role check: shows a "no access" page instead of the content
+      Access.guardPage(["patients.view"], "patient files");
+    </script>
+  </head>
+  <body>
+    <header class="app-header">
+      <a class="app-title" href="./home.html" aria-label="N-DFIP, National Diabetic Foot Intelligence Platform, home"><span class="app-title__short">N-DFIP</span><span class="app-title__full">National Diabetic Foot Intelligence Platform</span></a>
+
+      <nav class="app-nav" aria-label="Main">
+        <a href="./home.html">Home</a>
+        <a href="./patients.html" aria-current="page">Patients</a>
+        <a href="./referrals.html">Referrals</a>
+        <a href="./dashboard.html">Dashboard</a>
+        <a href="./audit.html">Audit log</a>
+        <a href="./settings.html">Settings</a>
+      </nav>
+
+      <div class="user-menu">
+        <button
+          type="button"
+          class="avatar-button"
+          id="user-menu-button"
+          aria-haspopup="menu"
+          aria-expanded="false"
+          aria-controls="user-menu"
+          aria-label="Open user menu"
+        >
+          <span id="user-initials">?</span>
+        </button>
+
+        <div class="menu" id="user-menu" role="menu" aria-labelledby="user-menu-button" hidden>
+          <button type="button" class="menu-item" role="menuitem" data-action="account">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+            Account
+          </button>
+          <button type="button" class="menu-item" role="menuitem" data-action="settings">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /><circle cx="12" cy="12" r="3" /></svg>
+            Settings
+          </button>
+          <hr class="menu-separator" role="separator" />
+          <button type="button" class="menu-item menu-item--destructive" role="menuitem" data-action="logout">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 17 5-5-5-5" /><path d="M21 12H9" /><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></svg>
+            Log out
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="page-content records-file" id="patient-page">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="./home.html">Home</a>
+        <span aria-hidden="true">/</span>
+        <a href="./patients.html">Patients</a>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">Patient file</span>
+      </nav>
+
+      <div id="patient-file" aria-live="polite"></div>
+    </main>
+
+    <script src="./scripts/user-menu.js"></script>
+    <script src="./scripts/patients.js"></script>
+    <script src="./scripts/clinical-rules.js"></script>
+    <script src="./scripts/screening-store.js"></script>
+    <script src="./scripts/encounters-ui.js"></script>
+    <script src="./scripts/records-common.js"></script>
+    <script src="./scripts/patient-file.js"></script>
+  </body>
+</html>

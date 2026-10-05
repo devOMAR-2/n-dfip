@@ -4,17 +4,30 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sign in</title>
+    <title>Sign in · N-DFIP</title>
     <link rel="stylesheet" href="./styles/shared.css" />
+    <script src="./scripts/db.js"></script>
     <script src="./scripts/auth.js"></script>
+    <script src="./scripts/staff.js"></script>
+    <script src="./scripts/access.js"></script>
+    <script src="./scripts/org.js"></script>
+    <script src="./scripts/audit.js"></script>
+    <script src="./scripts/privacy.js"></script>
+    <script src="./scripts/session.js"></script>
     <script>
-      // Already signed in: skip the form
-      if (Auth.findUser(Auth.getSessionId())) window.location.replace(Auth.HOME_PAGE);
+      // Already signed in: skip the form (unless session.js just signed this user out)
+      if (Auth.findUser(Auth.getSessionId())) {
+        const next = Auth.safeNext(new URLSearchParams(location.search).get("next"));
+        window.location.replace(next ?? Auth.HOME_PAGE);
+      }
     </script>
   </head>
   <body>
     <main class="auth-page">
-      <h1 class="app-title">The Clinical Platform</h1>
+      <div class="brand-lockup">
+        <p class="brand-lockup__abbr">N-DFIP</p>
+        <h1 class="app-title">National Diabetic Foot Intelligence Platform</h1>
+      </div>
 
       <div class="card">
         <div class="card-header">
@@ -23,6 +36,11 @@
         </div>
 
         <div class="card-content">
+          <div class="callout callout-warning auth-notice" id="auth-notice" role="status" hidden>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><path d="M12 8v4" /><path d="M12 16h.01" /></svg>
+            <div><strong id="auth-notice-title"></strong><p id="auth-notice-text"></p></div>
+          </div>
+
           <form class="form" id="sign-in-form" novalidate>
             <div class="field">
               <label class="label" for="employee-id">Employee ID</label>
@@ -41,7 +59,10 @@
             </div>
 
             <div class="field">
-              <label class="label" for="password">Password</label>
+              <div class="label-row">
+                <label class="label" for="password">Password</label>
+                <button type="button" class="btn-link" id="forgot-open">Forgot password?</button>
+              </div>
               <div class="input-group">
                 <input
                   class="input"
@@ -78,65 +99,59 @@
 
         <div class="card-footer">
           <p class="eyebrow">Demo accounts</p>
-          <button
-            type="button"
-            class="demo-account"
-            data-employee-id="100001"
-            data-password="Admin@123"
-          >
-            <span class="demo-account__head">
-              <span>System Administrator</span>
-              <span class="badge badge-secondary">Administrator</span>
-            </span>
-            <span class="demo-account__creds">
-              <span>Employee ID</span>
-              <code>100001</code>
-              <span>Password</span>
-              <code>Admin@123</code>
-            </span>
-            <span class="demo-account__hint">Click to fill the form</span>
-          </button>
-          <button
-            type="button"
-            class="demo-account"
-            data-employee-id="100002"
-            data-password="Nurse@123"
-          >
-            <span class="demo-account__head">
-              <span>Amal Saeed Al-Harthi</span>
-              <span class="badge badge-secondary">Screening Nurse</span>
-            </span>
-            <span class="demo-account__creds">
-              <span>Employee ID</span>
-              <code>100002</code>
-              <span>Password</span>
-              <code>Nurse@123</code>
-            </span>
-            <span class="demo-account__hint">Click to fill the form</span>
-          </button>
-          <button
-            type="button"
-            class="demo-account"
-            data-employee-id="100003"
-            data-password="Doctor@123"
-          >
-            <span class="demo-account__head">
-              <span>Yousef Khalid Al-Rashidi</span>
-              <span class="badge badge-secondary">Practitioner</span>
-            </span>
-            <span class="demo-account__creds">
-              <span>Employee ID</span>
-              <code>100003</code>
-              <span>Password</span>
-              <code>Doctor@123</code>
-            </span>
-            <span class="demo-account__hint">Click to fill the form</span>
-          </button>
+          <p class="field-hint">Fictional staff. Click an account to fill the form.</p>
+          <div class="demo-accounts" id="demo-accounts"></div>
+          <a class="btn-link demo-mailbox-link" href="./mailbox.html">Open the demo mailbox (password reset e-mails)</a>
         </div>
       </div>
 
       <p class="page-note">Prototype — not for clinical use.</p>
     </main>
+
+    <dialog class="modal" id="forgot-dialog" aria-labelledby="forgot-title">
+      <div class="modal__inner">
+        <div class="modal__header">
+          <div>
+            <h2 class="modal__title" id="forgot-title">Reset your password</h2>
+            <p class="modal__description">Enter your employee ID. We'll e-mail a reset link to the address on your staff record.</p>
+          </div>
+          <form method="dialog">
+            <button type="submit" class="btn btn-icon" aria-label="Close">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+            </button>
+          </form>
+        </div>
+
+        <form class="form" id="forgot-form" novalidate>
+          <div class="field">
+            <label class="label" for="forgot-id">Employee ID</label>
+            <input class="input" id="forgot-id" name="forgotId" autocomplete="username" inputmode="numeric" />
+            <p class="field-error" id="forgot-id-error" hidden>
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><line x1="12" x2="12" y1="8" y2="12" /><line x1="12" x2="12.01" y1="16" y2="16" /></svg>
+              <span></span>
+            </p>
+          </div>
+          <div class="modal__actions">
+            <button type="button" class="btn btn-outline" id="forgot-cancel">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="forgot-send">Send reset link</button>
+          </div>
+        </form>
+
+        <div class="forgot-done" id="forgot-done" hidden>
+          <div class="callout callout-success" role="status">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><path d="m9 11 3 3L22 4" /></svg>
+            <div>
+              <strong>Check your e-mail</strong>
+              <p>If this employee ID belongs to an active account with an e-mail address on file, a reset link is on its way. It works once and expires in 30 minutes. No e-mail after a few minutes? Your record may have no e-mail address: ask your administrator.</p>
+            </div>
+          </div>
+          <div class="modal__actions">
+            <a class="btn btn-outline" href="./mailbox.html">Open demo mailbox</a>
+            <button type="button" class="btn btn-primary" id="forgot-close">Done</button>
+          </div>
+        </div>
+      </div>
+    </dialog>
 
     <script>
       const form = document.getElementById("sign-in-form");
@@ -151,7 +166,23 @@
         },
       };
       const remember = document.getElementById("remember");
+      const params = new URLSearchParams(location.search);
+      const next = Auth.safeNext(params.get("next"));
       let credentialsError = false;
+
+      // Why the user is here (session.js sends ?reason=)
+      const NOTICES = {
+        expired: ["You were signed out", "There was no activity for a while, so we signed you out to protect patient data. Sign in to continue where you stopped; your draft is kept."],
+        disabled: ["Your account is disabled", "You were signed out because your account was disabled. Contact your administrator if this is a mistake."],
+        reset: ["Your password was changed", "You were signed out because the password for your account was changed. Sign in with the new password."],
+        changed: ["Password changed", "Sign in with your new password."],
+      };
+      const notice = NOTICES[params.get("reason")];
+      if (notice) {
+        document.getElementById("auth-notice-title").textContent = notice[0];
+        document.getElementById("auth-notice-text").textContent = notice[1];
+        document.getElementById("auth-notice").hidden = false;
+      }
 
       function showError(name, message) {
         const { input, error } = fields[name];
@@ -195,13 +226,15 @@
           return;
         }
 
-        if (Auth.signIn(employeeId, password, remember.checked)) {
-          window.location.replace(Auth.HOME_PAGE);
+        const result = Auth.attempt(employeeId, password, remember.checked);
+        if (result.ok) {
+          // Back to the page the user was on when the session expired (EC-04)
+          window.location.replace(next ?? Auth.HOME_PAGE);
           return;
         }
 
         credentialsError = true;
-        showError("password", "Incorrect employee ID or password.");
+        showError("password", result.reason === "disabled" ? "This account is disabled. Contact your administrator." : "Incorrect employee ID or password.");
         fields.employeeId.input.setAttribute("aria-invalid", "true");
         fields.employeeId.input.setAttribute("aria-describedby", fields.password.error.id);
         fields.password.input.value = "";
@@ -219,13 +252,82 @@
         toggle.querySelector(".icon-eye-off").toggleAttribute("hidden", !show);
       });
 
-      // Demo account cards fill the form
-      document.querySelectorAll(".demo-account").forEach((card) => {
+      // Demo account cards (one per demo account in auth.js) fill the form
+      const list = document.getElementById("demo-accounts");
+      for (const u of Auth.USERS) {
+        const card = document.createElement("button");
+        card.type = "button";
+        card.className = "demo-account demo-account--compact";
+        card.setAttribute("aria-label", `Fill in ${u.name}, ${u.roleLabel}: employee ID ${u.employeeId}`);
+        const head = document.createElement("span");
+        head.className = "demo-account__head";
+        const name = document.createElement("span");
+        name.className = "demo-account__name";
+        name.textContent = u.name;
+        const badge = document.createElement("span");
+        badge.className = "badge badge-secondary";
+        badge.textContent = u.roleLabel;
+        head.append(name, badge);
+        const creds = document.createElement("span");
+        creds.className = "demo-account__creds demo-account__creds--inline";
+        creds.innerHTML = "<span>ID</span><code></code><span>Password</span><code></code>";
+        const codes = creds.querySelectorAll("code");
+        codes[0].textContent = u.employeeId;
+        codes[1].textContent = u.password;
+        card.append(head, creds);
         card.addEventListener("click", () => {
-          fields.employeeId.input.value = card.dataset.employeeId;
-          fields.password.input.value = card.dataset.password;
+          fields.employeeId.input.value = u.employeeId;
+          fields.password.input.value = u.password;
           clearAllErrors();
         });
+        list.append(card);
+      }
+
+      // ---------- Forgot password (UAT-04) ----------
+      const forgot = document.getElementById("forgot-dialog");
+      const forgotForm = document.getElementById("forgot-form");
+      const forgotId = document.getElementById("forgot-id");
+      const forgotErr = document.getElementById("forgot-id-error");
+      const forgotDone = document.getElementById("forgot-done");
+      const setForgotError = (message) => {
+        forgotErr.hidden = !message;
+        forgotErr.querySelector("span").textContent = message ?? "";
+        if (message) forgotId.setAttribute("aria-invalid", "true");
+        else forgotId.removeAttribute("aria-invalid");
+      };
+      document.getElementById("forgot-open").addEventListener("click", () => {
+        forgotForm.hidden = false;
+        forgotDone.hidden = true;
+        forgotId.value = fields.employeeId.input.value.trim();
+        setForgotError(null);
+        forgot.showModal();
+        forgotId.focus();
+      });
+      document.getElementById("forgot-cancel").addEventListener("click", () => forgot.close());
+      document.getElementById("forgot-close").addEventListener("click", () => forgot.close());
+      forgotId.addEventListener("input", () => setForgotError(null));
+      forgotForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const id = forgotId.value.trim();
+        if (!id) {
+          setForgotError("Enter your employee ID.");
+          forgotId.focus();
+          return;
+        }
+        const send = document.getElementById("forgot-send");
+        send.disabled = true;
+        try {
+          // The answer is the same whether or not the ID exists (no account guessing)
+          Auth.requestReset(id, null);
+        } catch (e) {
+          setForgotError(e?.message ?? "The request couldn't be sent. Try again.");
+          send.disabled = false;
+          return;
+        }
+        send.disabled = false;
+        forgotForm.hidden = true;
+        forgotDone.hidden = false;
+        document.getElementById("forgot-close").focus();
       });
     </script>
   </body>

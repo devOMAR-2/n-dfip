@@ -4,21 +4,38 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Diabetic Foot</title>
+    <title>Diabetic Foot · N-DFIP</title>
     <link rel="stylesheet" href="./styles/shared.css" />
+    <script src="./scripts/db.js"></script>
     <script src="./scripts/auth.js"></script>
+    <script src="./scripts/staff.js"></script>
+    <script src="./scripts/access.js"></script>
+    <script src="./scripts/org.js"></script>
+    <script src="./scripts/audit.js"></script>
+    <script src="./scripts/privacy.js"></script>
+    <script src="./scripts/history-seed.js"></script>
+    <script src="./scripts/referrals.js"></script>
+    <script src="./scripts/tests.js"></script>
+    <script src="./scripts/session.js"></script>
+    <script src="./scripts/privacy-ui.js"></script>
+    <script src="./scripts/notifications.js"></script>
     <script>
       // Not signed in: back to the sign-in page
       if (!Auth.getSessionId()) window.location.replace(Auth.LOGIN_PAGE);
+      // Role check (F-01): shows a "no access" page instead of the content
+      Access.guardPage(["patients.view"], "the clinic page");
     </script>
   </head>
   <body>
     <header class="app-header">
-      <a class="app-title" href="./home.html">The Clinical Platform</a>
+      <a class="app-title" href="./home.html" aria-label="N-DFIP, National Diabetic Foot Intelligence Platform, home"><span class="app-title__short">N-DFIP</span><span class="app-title__full">National Diabetic Foot Intelligence Platform</span></a>
 
       <nav class="app-nav" aria-label="Main">
         <a href="./home.html">Home</a>
+        <a href="./patients.html">Patients</a>
+        <a href="./referrals.html">Referrals</a>
         <a href="./dashboard.html">Dashboard</a>
+        <a href="./audit.html">Audit log</a>
         <a href="./settings.html">Settings</a>
       </nav>
 
@@ -66,6 +83,13 @@
           Structured foot screening by trained staff, prepared for practitioner review. One
           connected record supporting prevention, continuity and limb preservation.
         </p>
+      </div>
+
+      <!-- Several clinics in scope (UAT-01): choose where you work today -->
+      <div class="clinic-picker" id="clinic-picker" hidden>
+        <label class="label" for="working-clinic">Working in</label>
+        <select class="input select" id="working-clinic"></select>
+        <p class="field-hint" id="working-clinic-hint">New screenings and the queues below use this clinic.</p>
       </div>
 
       <!-- Step 1: no patient yet -->
@@ -174,12 +198,11 @@
         </dl>
       </section>
 
-      <!-- Practitioner worklist -->
-      <section class="page-section" aria-labelledby="worklist-title">
-        <h2 class="section-title" id="worklist-title">Awaiting practitioner review</h2>
-        <p class="field-hint" id="worklist-empty" hidden>No screenings waiting for review.</p>
-        <ul class="worklist" id="worklist"></ul>
-      </section>
+      <!-- Work queues, shown per role (UAT-06/07/08) -->
+      <section class="page-section" data-queue="screening" data-queue-scope="working" hidden></section>
+      <section class="page-section" data-queue="review" data-queue-scope="working" hidden></section>
+      <section class="page-section" data-queue="pre-review" data-queue-scope="working" hidden></section>
+      <section class="page-section" data-queue="supervision" data-queue-scope="working" hidden></section>
     </main>
 
     <!-- Patient search -->
@@ -239,6 +262,7 @@
     <script src="./scripts/patients.js"></script>
     <script src="./scripts/patient-select.js"></script>
     <script src="./scripts/screening-store.js"></script>
+    <script src="./scripts/encounters-ui.js"></script>
     <script src="./scripts/worklist.js"></script>
   </body>
 </html>

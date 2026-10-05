@@ -3,6 +3,8 @@
 // surface gaps; 2px lines with >= 8px markers and a 2px surface ring; hairline solid
 // grid. Every chart has a hover/focus tooltip and a table view. Colors are CSS
 // variables (validated palette in shared.css), applied via style so var() resolves.
+// Drill-down (UAT-23): columns/bars take onSelect(index) and stat tiles take
+// action { label, onClick }; a selected mark opens the list behind the figure.
 
 const Charts = (() => {
   const NS = "http://www.w3.org/2000/svg";
@@ -191,10 +193,17 @@ const Charts = (() => {
   }
 
   // Keyboard + pointer over an indexed x (columns, lines)
-  function indexInteraction(svg, n, indexAt, onActive, label) {
+  function indexInteraction(svg, n, indexAt, onActive, label, onSelect) {
     svg.setAttribute("tabindex", "0");
     svg.setAttribute("role", "group");
-    svg.setAttribute("aria-label", `${label}. Use left and right arrow keys to read values.`);
+    svg.setAttribute("aria-label", `${label}. Use left and right arrow keys to read values${onSelect ? ", Enter to list the appointments" : ""}.`);
+    if (onSelect) {
+      svg.classList.add("chart-svg--selectable");
+      svg.addEventListener("click", (e) => {
+        const i = indexAt(e);
+        if (i >= 0) onSelect(i);
+      });
+    }
     let active = -1;
     const set = (i, x, y) => {
       active = i;
@@ -211,6 +220,11 @@ const Charts = (() => {
       hideTip();
     });
     svg.addEventListener("keydown", (e) => {
+      if (onSelect && e.key === "Enter" && active >= 0) {
+        e.preventDefault();
+        onSelect(active);
+        return;
+      }
       if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
       e.preventDefault();
       set(Math.max(0, Math.min(n - 1, active + (e.key === "ArrowRight" ? 1 : -1))));
@@ -267,6 +281,7 @@ const Charts = (() => {
           showTip(opts.fullLabels?.[i] ?? opts.labels[i], [{ color: opts.colors?.[i] ?? color, value: format(opts.values[i]), name: opts.name ?? opts.title }], ax, ay);
         },
         opts.title,
+        opts.onSelect,
       );
       plot.replaceChildren(svg);
     };
@@ -412,6 +427,17 @@ const Charts = (() => {
         g.addEventListener("pointerleave", hideTip);
         g.addEventListener("focus", () => show());
         g.addEventListener("blur", hideTip);
+        if (opts.onSelect) {
+          g.classList.add("chart-bar--selectable");
+          g.setAttribute("aria-label", `${it.label}: ${format(it.value)}. Press Enter to list the appointments.`);
+          g.addEventListener("click", () => opts.onSelect(i));
+          g.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              opts.onSelect(i);
+            }
+          });
+        }
         svg.append(g);
       });
       plot.replaceChildren(svg);
@@ -473,7 +499,7 @@ const Charts = (() => {
   const ARROW_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7" /><path d="M12 19V5" /></svg>';
   const ARROW_DOWN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14" /><path d="m19 12-7 7-7-7" /></svg>';
 
-  function stat({ label, value, delta, spark, note }) {
+  function stat({ label, value, delta, spark, note, action }) {
     const tile = el("div", "stat-tile");
     tile.append(el("p", "stat-tile__label", label), el("p", "stat-tile__value", value));
     if (delta && Number.isFinite(delta.pct)) {
@@ -501,8 +527,19 @@ const Charts = (() => {
       svg.append(svgEl("circle", { cx: last[0], cy: last[1], r: 3, class: "spark-dot" }));
       tile.append(svg);
     }
+    if (action) {
+      tile.classList.add("stat-tile--action");
+      const b = el("button", "stat-tile__open", action.label ?? "View list");
+      b.type = "button";
+      b.setAttribute("aria-label", `${action.label ?? "View list"}: ${label}`);
+      b.addEventListener("click", action.onClick);
+      tile.addEventListener("click", (e) => {
+        if (e.target !== b) action.onClick();
+      });
+      tile.append(b);
+    }
     return tile;
   }
 
-  return { fmt, columns, lines, bars, stacked, stat };
+  return { fmt, columns, lines, bars, stacked, stat, tableView };
 })();

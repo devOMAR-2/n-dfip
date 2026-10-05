@@ -2,7 +2,8 @@
 # Static markup; data-driven parts are
 # empty containers filled by scripts/review.js.
 from formkit import *  # noqa: F401,F403
-from formkit import SUB_ICONS, ROOT
+from formkit import SUB_ICONS, ROOT, SCHEMA, record
+import json
 
 FLASK = '<path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2" /><path d="M8.5 2h7" /><path d="M7 16h10" />'
 PILL = '<path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z" /><path d="m8.5 8.5 7 7" />'
@@ -42,6 +43,9 @@ SUB_ICONS.update({
     "Instructions": SUB_ICONS["Patient details"],
     "Draft note": PEN,
     "Signature": PEN,
+    "Medications": PILL,
+    "Allergies": SUB_ICONS["Red flags"],
+    "Tests": FLASK,
 })
 
 
@@ -51,6 +55,7 @@ def svg(paths):
 
 
 def textarea(label, name, rows=3, required=False, optional=False, error=None, hint=None):
+    record({'name': name, 'label': label, 'type': 'textarea', 'required': required})
     fid = 'f-' + name.replace('.', '-')
     req = f' data-required="value" data-error="{esc(error or "Enter a value.")}"' if required else ''
     opt = ' <span class="label__optional">(optional)</span>' if optional else ''
@@ -65,6 +70,7 @@ def textarea(label, name, rows=3, required=False, optional=False, error=None, hi
 
 
 def text_input(label, name, required=False, optional=False, error=None, hint=None):
+    record({'name': name, 'label': label, 'type': 'text', 'required': required})
     fid = 'f-' + name.replace('.', '-')
     req = f' data-required="value" data-error="{esc(error or "Enter a value.")}"' if required else ''
     opt = ' <span class="label__optional">(optional)</span>' if optional else ''
@@ -81,10 +87,12 @@ def text_input(label, name, required=False, optional=False, error=None, hint=Non
 YN = [('yes', 'Yes'), ('no', 'No')]
 
 # ---------- 1 Screening findings ----------
+begin("findings")
 s1 = sub("Nurse findings", '''<p class="field-hint">Nurse entries from Part 1. Correcting a value keeps the original visible, with who changed it and when.</p>
 <div class="findings" data-findings></div>''')
 
 # ---------- 2 Recommendations ----------
+begin("recommendations")
 s2 = '\n\n'.join([
     sub("Neuropathy & circulation", '<p class="field-hint">Draft rules: confirm or override each foot. The risk category is calculated from your decisions.</p>\n<div class="rec-grid" data-recs="foot"></div>'),
     sub("Risk category", '<div class="rec-grid" data-recs="risk"></div>'),
@@ -92,6 +100,7 @@ s2 = '\n\n'.join([
 ])
 
 # ---------- 3 Wound evaluation ----------
+begin("wound")
 ONSET = [('lt1w', '< 1 week'), ('1-4w', '1–4 weeks'), ('1-3m', '1–3 months'), ('gt3m', '> 3 months')]
 WTYPE = [('neuropathic', 'Neuropathic'), ('ischaemic', 'Ischaemic'), ('neuroischaemic', 'Neuro-ischaemic'),
          ('pressure', 'Pressure'), ('trauma', 'Trauma'), ('surgical', 'Surgical'), ('other', 'Other')]
@@ -118,6 +127,7 @@ def wound_card(n):
 {ind(q_choice("Probe-to-bone", f"{p}.ptb", [("yes", "Positive"), ("no", "Negative")], error="Record the probe-to-bone result."), 2)}
 {ind(q_choice("Exposed structure", f"{p}.exposed", [("tendon", "Tendon"), ("joint", "Joint"), ("bone", "Bone"), ("none", "None")], kind="checkbox", exclusive="none", error="Choose exposed structures, or “None”."), 2)}
   <!-- assumed: gangrene is not in the spec but Wagner and WIfI need it -->
+{ind(q_choice("Abscess", f"{p}.abscess", [("yes", "Yes"), ("no", "No")], error="Record whether there is an abscess.", hint="MOH: Wagner 3, moderate infection and acute foot attack all include abscess."), 2)}
 {ind(q_choice("Gangrene", f"{p}.gangrene", [("none", "None"), ("localized", "Localized (toe / forefoot)"), ("extensive", "Extensive")], error="Record gangrene."), 2)}
 {ind(q_choice("Osteomyelitis", f"{p}.osteomyelitis", [("no", "Not suspected"), ("suspected", "Suspected"), ("confirmed", "Confirmed")], error="Record osteomyelitis status."), 2)}
   <div class="rec-grid" data-recs="wound-{n}"></div>
@@ -132,16 +142,22 @@ s3 = sub("Ulcers", f'''<p class="field-hint" data-no-wounds hidden>No ulcers rec
 </div>''')
 
 # ---------- 4 Labs ----------
-LAB_ROWS = [('wbc', 'WBC', '×10⁹/L', '4.5–11'), ('platelets', 'Platelets', '×10⁹/L', '150–400'),
+begin("labs")
+LAB_ROWS = [('wbc', 'WBC', '×10⁹/L', '4.5–11'),
+            ('hb', 'Haemoglobin', 'g/dL', 'male 13.8–17.2, female 12.1–15.1 (MOH Table 7)'),
+            ('platelets', 'Platelets', '×10⁹/L', '150–400 (DF102; MOH Table 7 gives 450 as the upper limit)'),
             ('fbg', 'Fasting glucose', 'mg/dL', '70–100'), ('hba1c', 'HbA1c', '%', 'target < 7'),
-            ('creatinine', 'Creatinine', 'µmol/L', None), ('crp', 'CRP', 'mg/L', '< 10'),
+            ('urea', 'Urea', 'mg/dL', None),
+            ('creatinine', 'Creatinine', 'mg/dL', 'male 0.74–1.35, female 0.59–1.04 (MOH Table 7)'),
+            ('egfr', 'eGFR', 'mL/min/1.73 m²', None),
+            ('crp', 'CRP', 'mg/L', '< 10'),
             ('esr', 'ESR', 'mm/hr', '< 20'), ('procalcitonin', 'Procalcitonin', 'ng/mL', '< 0.1'),
             ('lactate', 'Lactate', 'mmol/L', '< 2'), ('albumin', 'Albumin', 'g/L', '35–50')]
 
 
 def lab_field(key, label, unit, ref):
     fid = f'f-r-lab-{key}'
-    hint = f'Reference {ref}' if ref else 'No reference range in source'
+    hint = f'Reference {ref}' if ref else 'No reference range in the source documents'
     return f'''<div class="q lab-field" data-lab="{key}">
   <label class="label" for="{fid}">{esc(label)} <span class="badge lab-flag" data-lab-flag hidden></span></label>
   <div class="input-unit">
@@ -154,7 +170,7 @@ def lab_field(key, label, unit, ref):
 
 s4 = '\n\n'.join([
     sub("Suggested tests", '<p class="field-hint" data-suggested-empty>Suggestions appear when the nurse recorded an ulcer.</p>\n<div class="suggest-list" data-suggested></div>'),
-    sub("Haematology & chemistry", '<p class="field-hint">Reference ranges from the Diabetic Foot 102 teaching deck. WBC feeds the SIRS count.</p>\n<div class="lab-grid">\n' + ind('\n'.join(lab_field(*r) for r in LAB_ROWS), 2) + '\n</div>'),
+    sub("Haematology & chemistry", '<p class="field-hint">Reference ranges from the Diabetic Foot 102 deck and MOH Table 7; sex-specific ranges use the patient record. WBC feeds the SIRS count.</p>\n<div class="lab-grid">\n' + ind('\n'.join(lab_field(*r) for r in LAB_ROWS), 2) + '\n</div>'),
     sub("Microbiology", '\n'.join([
         text_input("Wound culture result", "r.lab.culture", optional=True),
         text_input("Bone / blood culture result", "r.lab.deepCulture", optional=True),
@@ -162,6 +178,7 @@ s4 = '\n\n'.join([
 ])
 
 # ---------- 5 PAD ----------
+begin("pad")
 s5 = '\n\n'.join([
     sub("Bedside findings", '<div class="pad-summary" data-pad-summary></div>'),
     sub("Assessment", '\n'.join([
@@ -172,6 +189,7 @@ s5 = '\n\n'.join([
 ])
 
 # ---------- 6 Infection ----------
+begin("infection")
 s6 = '\n\n'.join([
     sub("Infection status", '<div class="infection-summary" data-infection-summary></div>\n<div class="callout callout-warning" data-allergies hidden>\n  ' + WARN_SVG + '\n  <div><strong>Allergies</strong><p data-allergy-text></p></div>\n</div>'),
     sub("Antibiotics", '\n'.join([
@@ -189,7 +207,16 @@ s6 = '\n\n'.join([
     ])),
 ])
 
+# ---------- Medications (UAT-16) ----------
+begin("medications")
+s_med = sub("Medications", '\n'.join([
+    '<div class="allergy-box" data-med-allergies></div>',
+    textarea("Medication, dose and instructions", "r.med.text", rows=5, optional=True,
+             hint="Free text, one medication per line. Appears in the clinical note and the patient file."),
+]))
+
 # ---------- 7 Adjunctive ----------
+begin("adjunct")
 s7 = '\n\n'.join([
     sub("Standard wound care", '\n'.join([
         q_choice("Debridement", "r.std.debridement", [("none", "None"), ("sharp", "Sharp"), ("enzymatic", "Enzymatic"), ("autolytic", "Autolytic"), ("mechanical", "Mechanical")], required=False),
@@ -204,19 +231,21 @@ s7 = '\n\n'.join([
 ])
 
 # ---------- 8 Orders ----------
+begin("orders")
 LAB_ORDERS = [("cbc", "CBC"), ("esr", "ESR"), ("crp", "CRP"), ("fbg", "Fasting blood glucose"), ("hba1c", "HbA1c"),
-              ("creatinine", "Serum creatinine"), ("wound-culture", "Wound culture (C&S)"), ("procalcitonin", "Procalcitonin"),
+              ("creatinine", "Renal function (urea, creatinine, eGFR)"), ("wound-culture", "Wound culture (C&S)"), ("procalcitonin", "Procalcitonin"),
               ("bone-culture", "Bone culture"), ("blood-culture", "Blood cultures"), ("lactate", "Lactate"), ("albumin", "Albumin")]
 s8 = '\n\n'.join([
-    sub("Laboratory", '\n'.join([
-        q_choice("Tests", "r.orders.labs", LAB_ORDERS, kind="checkbox", required=False),
-        text_input("Other tests", "r.orders.labsOther", optional=True),
+    sub("Tests", '\n'.join([
+        '<p class="field-hint">Laboratory and imaging. Some tests need approval or insurance approval before they go ahead; their status shows here.</p>',
+        '<div class="test-orders" data-test-orders></div>',
+        text_input("Other tests (free text)", "r.orders.labsOther", optional=True),
     ])),
-    sub("Imaging", q_choice("Imaging", "r.orders.imaging", [("xray", "Plain radiograph"), ("mri", "MRI"), ("duplex", "Arterial duplex"), ("cta", "CT / MR angiography")], kind="checkbox", required=False)),
     sub("Referrals", q_choice("Referral orders", "r.orders.referrals", [("podiatry", "Podiatry / wound care"), ("vascular", "Vascular"), ("id-surgical", "Infectious disease / surgical"), ("orthotic", "Footwear / orthotic")], kind="checkbox", required=False)),
 ])
 
 # ---------- 9 Interpretation ----------
+begin("interpretation")
 s9 = '\n\n'.join([
     sub("Confirmed conclusions", '<dl class="detail-grid detail-grid--plain" data-interp-summary></dl>'),
     sub("Impression", '\n'.join([
@@ -226,6 +255,7 @@ s9 = '\n\n'.join([
 ])
 
 # ---------- 10 Referral ----------
+begin("referral")
 s10 = '\n\n'.join([
     sub("System suggestion", f'''<div class="suggestion" data-ref-suggestion>
   <div data-ref-suggestion-text></div>
@@ -234,15 +264,16 @@ s10 = '\n\n'.join([
     sub("Decision", '\n'.join([
         q_choice("Referral needed?", "r.ref.needed", YN, error="Choose whether a referral is needed."),
         '<div class="reveal" data-reveal="referral" hidden>',
-        ind(q_choice("Destination", "r.ref.destination", [("secondary", "Secondary Care"), ("private", "Private Center"), ("vascular", "Vascular"), ("wound-care", "Wound Care"), ("tertiary", "Tertiary")], error="Choose the destination."), 2),
+        ind(q_choice("Destination", "r.ref.destination", [("er", "Emergency department"), ("tertiary", "Tertiary"), ("secondary", "Secondary Care"), ("vascular", "Vascular"), ("wound-care", "Wound Care"), ("private", "Private Center")], error="Choose the destination."), 2),
         ind(q_choice("Urgency", "r.ref.urgency", [("routine", "Routine"), ("soon", "Soon"), ("urgent", "Urgent"), ("emergency", "Emergency")], error="Choose the urgency."), 2),
-        ind(q_choice("Timing", "r.ref.timing", [("today", "Today"), ("24h", "≤ 24 h"), ("week", "≤ 1 week"), ("scheduled", "Scheduled")], error="Choose the timing."), 2),
+        ind(q_choice("Timing", "r.ref.timing", [("today", "Today"), ("24h", "≤ 24 h"), ("week", "≤ 1 week"), ("3weeks", "≤ 3 weeks"), ("scheduled", "Scheduled")], error="Choose the timing."), 2),
         ind(text_input("Reason for referral", "r.ref.reason", optional=True), 2),
         '</div>',
     ])),
 ])
 
 # ---------- 11 Plan ----------
+begin("plan")
 s11 = '\n\n'.join([
     sub("Education", q_choice("Advice given", "r.plan.education", [("foot-care", "Foot-care education"), ("self-check", "Daily self-check"), ("footwear", "Footwear advice"), ("glycaemic", "Glycaemic control reviewed")], kind="checkbox", error="Record the advice given.")),
     sub("Footwear & offloading", text_input("Footwear / offloading plan", "r.plan.offloading", optional=True)),
@@ -254,10 +285,11 @@ s11 = '\n\n'.join([
 ])
 
 # ---------- 12 Instructions ----------
+begin("instructions")
 s12 = sub("Instructions", f'''<div class="note-toolbar">
   <span class="badge badge-muted" data-instructions-edited hidden>Edited</span>
   <button type="button" class="btn btn-outline" data-regenerate="instructions">{svg(REFRESH)}Regenerate</button>
-  <button type="button" class="btn btn-outline" data-print-instructions>{svg(PRINT)}Print</button>
+  <button type="button" class="btn btn-outline" data-print-instructions>{svg(PRINT)}Print / PDF</button>
 </div>
 <div class="q">
   <label class="label" for="f-r-instructions">Patient instructions</label>
@@ -265,9 +297,11 @@ s12 = sub("Instructions", f'''<div class="note-toolbar">
 </div>''')
 
 # ---------- 13 Note ----------
+begin("note")
 s13 = sub("Draft note", f'''<div class="note-toolbar">
   <span class="badge badge-muted" data-note-edited hidden>Edited</span>
   <button type="button" class="btn btn-outline" data-regenerate="note">{svg(REFRESH)}Regenerate</button>
+  <button type="button" class="btn btn-outline" data-print-summary>{svg(PRINT)}Print / PDF</button>
 </div>
 <p class="field-hint">Built from the findings, decisions and plan. Regenerating replaces your edits.</p>
 <div class="q">
@@ -276,7 +310,10 @@ s13 = sub("Draft note", f'''<div class="note-toolbar">
 </div>''')
 
 # ---------- 14 Sign-off ----------
+begin("signoff")
+SIGN_NOTICE = "The suggestions and proposed tests in this system are generated from rules set by the clinic's senior doctor for general cases. They are decision support only. The signing practitioner remains fully responsible for all clinical decisions."
 s14 = sub("Signature", '\n'.join([
+    f'<div class="callout callout-info sign-notice"><div><strong>Before you sign</strong><p data-sign-notice>{esc(SIGN_NOTICE)}</p></div></div>',
     '''<dl class="detail-grid detail-grid--plain">
   <div><dt>Assessor</dt><dd data-assessor></dd></div>
   <div><dt>Role</dt><dd data-assessor-role></dd></div>
@@ -286,19 +323,26 @@ s14 = sub("Signature", '\n'.join([
     text_input("Signature", "r.sign.name", required=True, error="Type your full name to sign.", hint="Type your full name exactly as shown above."),
 ]))
 
-SECTIONS_LIST = [
-    ('1', 'Screening Findings', s1), ('2', 'System Recommendations', s2), ('3', 'Wound Evaluation', s3),
-    ('4', 'Lab Results', s4), ('5', 'Peripheral Arterial Disease', s5), ('6', 'Infection Management', s6),
-    ('7', 'Adjunctive Therapies', s7), ('8', 'Orders', s8), ('9', 'Clinical Interpretation', s9),
-    ('10', 'Referral Decision', s10), ('11', 'Plan', s11), ('12', 'Patient Instructions', s12),
-    ('13', 'Clinical Note', s13), ('14', 'Sign-off', s14),
+SECTIONS_KEYED = [
+    ('findings', 'Screening Findings', s1), ('recommendations', 'System Recommendations', s2), ('wound', 'Wound Evaluation', s3),
+    ('labs', 'Lab Results', s4), ('pad', 'Peripheral Arterial Disease', s5), ('infection', 'Infection Management', s6),
+    ('medications', 'Medications', s_med), ('adjunct', 'Adjunctive Therapies', s7), ('orders', 'Orders', s8),
+    ('interpretation', 'Clinical Interpretation', s9), ('referral', 'Referral Decision', s10), ('plan', 'Plan', s11),
+    ('instructions', 'Patient Instructions', s12), ('note', 'Clinical Note', s13), ('signoff', 'Sign-off', s14),
 ]
-sections_html = '\n\n'.join(section(n, t, b, open_=(n in ('1', '2'))) for n, t, b in SECTIONS_LIST)
+# Numbered in order; data-key is the stable id used by the page layout settings (UAT-13/14)
+sections_html = '\n\n'.join(
+    section(str(i), t, b, open_=(i <= 2)).replace(f'data-section="{i}"', f'data-section="{i}" data-key="{k}"', 1)
+    for i, (k, t, b) in enumerate(SECTIONS_KEYED, 1))
 
 # ---------- Page ----------
 src = open(ROOT + 'diabetic-foot.html', encoding='utf-8').read()
 head_and_header = src[:src.index('    <main class="page-content')]
-head_and_header = head_and_header.replace('<title>Diabetic Foot</title>', '<title>Practitioner Review</title>')
+assert '<title>Diabetic Foot · N-DFIP</title>' in head_and_header
+head_and_header = head_and_header.replace('<title>Diabetic Foot · N-DFIP</title>', '<title>Practitioner Review · N-DFIP</title>')
+clinic_guard = 'Access.guardPage(["patients.view"], "the clinic page");'
+assert head_and_header.count(clinic_guard) == 1
+head_and_header = head_and_header.replace(clinic_guard, 'Access.guardPage(["review.queue"], "the practitioner review");')
 guard_old = '      if (!Auth.getSessionId()) window.location.replace(Auth.LOGIN_PAGE);\n'
 assert head_and_header.count(guard_old) == 1
 head_and_header = head_and_header.replace(guard_old, guard_old + '''      // Needs a screening id: review.html?id=…
@@ -377,6 +421,11 @@ page = head_and_header + f'''    <main class="page-content page-content--with-ac
           <h2 class="modal__title" id="confirm-sign-title">Sign and complete this review?</h2>
           <p class="modal__description" id="confirm-sign-text"></p>
         </div>
+        <div class="sign-ack">
+          <p class="sign-ack__text">{esc(SIGN_NOTICE)}</p>
+          <label class="check-row"><input type="checkbox" class="checkbox" id="ack-notice" /><span>I have read and acknowledge this notice</span></label>
+          <p class="field-error" id="ack-error" hidden>{ERR_SVG}<span>Acknowledge the notice to sign.</span></p>
+        </div>
         <div class="modal__actions">
           <button type="submit" class="btn btn-outline" value="cancel">Keep editing</button>
           <button type="submit" class="btn btn-primary" value="sign">Sign</button>
@@ -389,9 +438,21 @@ page = head_and_header + f'''    <main class="page-content page-content--with-ac
     <script src="./scripts/screening-schema.js"></script>
     <script src="./scripts/screening-store.js"></script>
     <script src="./scripts/clinical-rules.js"></script>
+    <script src="./scripts/review-schema.js"></script>
+    <script src="./scripts/layout.js"></script>
+    <script src="./scripts/drafts.js"></script>
+    <script src="./scripts/test-orders-ui.js"></script>
+    <script src="./scripts/encounters-ui.js"></script>
     <script src="./scripts/review.js"></script>
   </body>
 </html>
 '''
 open(ROOT + 'review.html', 'w', encoding='utf-8', newline='').write(page)
+
+review_fields = [f for f in SCHEMA if f['name'].startswith('r.') and not f['name'].startswith('r.sign.')]
+review_js = ('// GENERATED by tools/gen_review.py. Do not edit by hand.' + chr(10)
+             + '// Part 2 (practitioner) sections and fields, used by the page layout settings.' + chr(10)
+             + 'const ReviewSchema = ' + json.dumps({'sections': {k: t for k, t, _ in SECTIONS_KEYED}, 'fields': review_fields}, ensure_ascii=False, indent=1) + ';' + chr(10))
+open(ROOT + 'scripts/review-schema.js', 'w', encoding='utf-8', newline='').write(review_js)
+print('review fields', len(review_fields))
 print('ok', len(page))

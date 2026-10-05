@@ -155,7 +155,7 @@ const ClinicalRules = (() => {
     const source = "IWGDF/IDSA (MOH-EC)";
     const signs = w.signs.filter((s) => s !== "none");
     const erythema = w.erythemaCm ?? 0;
-    const deep = w.ptb === "yes" || w.exposed.some((e) => e !== "none") || w.osteomyelitis === "confirmed";
+    const deep = w.ptb === "yes" || w.exposed.some((e) => e !== "none") || w.osteomyelitis === "confirmed" || w.abscess === "yes";
     const osteo = w.osteomyelitis === "confirmed" ? " (O)" : "";
     if (!w.signs.length) return { value: null, reasons: ["Record local infection signs"], source };
     if (signs.length < 2) {
@@ -167,7 +167,7 @@ const ClinicalRules = (() => {
     }
     if (erythema >= 2 || deep) {
       if (erythema >= 2) reasons.push(`Erythema ${erythema} cm (≥ 2 cm)`);
-      if (deep) reasons.push("Deeper tissue involved");
+      if (deep) reasons.push(w.abscess === "yes" ? "Abscess / deeper tissue involved" : "Deeper tissue involved");
       return { value: 3, label: "3 · Moderate" + osteo, reasons, source };
     }
     return { value: 2, label: "2 · Mild", reasons: [...reasons, "Erythema < 2 cm, superficial"], source };
@@ -176,11 +176,11 @@ const ClinicalRules = (() => {
   // DRAFT mapping from the form's fields to Wagner 1–5 (DF102 / MOH-EC grades).
   function wagner(w) {
     const source = "Wagner (DF102)";
-    if (!w.gangrene || !w.exposed.length || !w.ptb) return { value: null, reasons: ["Record gangrene, exposed structures and probe-to-bone"], source };
+    if (!w.gangrene || !w.abscess || !w.exposed.length || !w.ptb) return { value: null, reasons: ["Record gangrene, abscess, exposed structures and probe-to-bone"], source };
     if (w.gangrene === "extensive") return { value: 5, reasons: ["Extensive gangrene"], source };
     if (w.gangrene === "localized") return { value: 4, reasons: ["Localized gangrene"], source };
-    if (w.ptb === "yes" || w.exposed.includes("bone") || w.osteomyelitis !== "no") {
-      return { value: 3, reasons: [w.ptb === "yes" ? "Probe-to-bone positive" : w.exposed.includes("bone") ? "Bone exposed" : "Osteomyelitis suspected / confirmed"], source };
+    if (w.abscess === "yes" || w.ptb === "yes" || w.exposed.includes("bone") || w.osteomyelitis !== "no") {
+      return { value: 3, reasons: [w.abscess === "yes" ? "Abscess (MOH: deep ulcer with osteomyelitis or abscess)" : w.ptb === "yes" ? "Probe-to-bone positive" : w.exposed.includes("bone") ? "Bone exposed" : "Osteomyelitis suspected / confirmed"], source };
     }
     if (w.exposed.some((e) => e === "tendon" || e === "joint")) return { value: 2, reasons: ["Deep: tendon or joint capsule exposed"], source };
     return { value: 1, reasons: ["Superficial ulcer"], source };
@@ -244,6 +244,7 @@ const ClinicalRules = (() => {
       if (u.infection >= 3) reasons.push(`Ulcer ${u.n}: IWGDF infection grade ${u.infection}`);
       if ((u.erythemaCm ?? 0) > 2) reasons.push(`Ulcer ${u.n}: cellulitis > 2 cm`);
       if (u.ptb === "yes") reasons.push(`Ulcer ${u.n}: probes to bone`);
+      if (u.abscess === "yes") reasons.push(`Ulcer ${u.n}: abscess`);
     }
     if (sirsCount >= 2) reasons.push(`${sirsCount} SIRS signs`);
     if (ischaemia) reasons.push("Ischaemia present");
@@ -264,22 +265,45 @@ const ClinicalRules = (() => {
     return tests;
   }
 
-  // ---------- Referral suggestion (MoC segmentation guide + MOH-EC) ----------
-  function referral({ stability, sirsCount, charcot, severeIschaemia: severe, ulcers, risk }) {
-    const source = "MoC patient segmentation / MOH-EC";
-    if (sirsCount >= 2 || stability === "unstable") {
-      return { needed: "yes", destination: "tertiary", urgency: "emergency", timing: "today", reasons: ["Acute foot attack / unstable foot: send to ER, MDT review"], source };
+  // ---------- Referral: MOH "Patient segmentation and action guide" (MoC p.91) ----------
+  // Acute foot attack   systemically ill, ulcer with ischaemia or gangrene, cellulitis or
+  //                     spreading infection, abscess or osteomyelitis -> straight to the ER
+  // Active foot disease chronic or infected ulceration without systemic illness, or
+  //                     suspected Charcot -> same-day referral to tertiary care
+  //                     (DECISION per UAT F-04: any active ulcer counts; the guide does not
+  //                     name a new, uninfected ulcer, so this stays with the clinical lead)
+  // High risk           two of neuropathy / ischaemia / callus-deformity, or previous ulcer
+  //                     or amputation, or renal replacement therapy -> secondary within 1 week
+  // Moderate risk       neuropathy, non-critical ischaemia, deformity, or skin changes other
+  //                     than callus -> secondary within 3 weeks
+  // Low risk            none of the above -> annual review in primary care
+  // Severe ischaemia without a higher tier: urgent vascular referral (MoC PAD pathway).
+  function referral(f) {
+    const source = "MoC patient segmentation and action guide (p.91)";
+    if (f.acute.length) {
+      return { tier: "Acute foot attack", needed: "yes", destination: "er", urgency: "emergency", timing: "today", reasons: [...f.acute, "Send directly to the emergency department; arrange MDT reassessment"], source };
     }
-    if (charcot) return { needed: "yes", destination: "tertiary", urgency: "urgent", timing: "today", reasons: ["Suspected Charcot: same-day referral to tertiary"], source };
-    if (severe) return { needed: "yes", destination: "vascular", urgency: "urgent", timing: "24h", reasons: ["Severe ischaemia: urgent vascular referral"], source };
-    if (ulcers.some((u) => u.infection >= 2)) {
-      return { needed: "yes", destination: "tertiary", urgency: "urgent", timing: "today", reasons: ["Infected ulcer without systemic illness (active foot disease)"], source };
+    if (f.active.length) {
+      return { tier: "Active foot disease", needed: "yes", destination: "tertiary", urgency: "urgent", timing: "today", reasons: [...f.active, "Same-day referral to tertiary care"], source };
     }
-    if (ulcers.length) return { needed: "yes", destination: "wound-care", urgency: "soon", timing: "week", reasons: ["Ulcer present: wound care within 1 week"], source };
-    if (risk === 3) return { needed: "yes", destination: "secondary", urgency: "soon", timing: "week", reasons: ["IWGDF 3: secondary care within 1 week"], source };
-    if (risk === 2) return { needed: "yes", destination: "secondary", urgency: "routine", timing: "scheduled", reasons: ["IWGDF 2: secondary care within 3 weeks"], source };
-    if (risk === 0 || risk === 1) return { needed: "no", reasons: [`IWGDF ${risk}: continue screening in primary care`], source };
-    return null;
+    if (f.neuropathy === null || f.ischaemia === null || f.deformity === null) return null;
+    if (f.severeIschaemia) {
+      return { tier: "Severe ischaemia", needed: "yes", destination: "vascular", urgency: "urgent", timing: "24h", reasons: ["Severe ischaemia: urgent vascular referral"], source: "MoC PAD pathway" };
+    }
+    const callusDeformity = f.deformity || f.callus;
+    const count = [f.neuropathy, f.ischaemia, callusDeformity].filter(Boolean).length;
+    const high = [];
+    if (count >= 2) high.push(`${count} of neuropathy, ischaemia, callus / deformity`);
+    if (f.previousUlcerOrAmputation) high.push("Previous ulcer or amputation");
+    if (f.renalReplacement) high.push("On renal replacement therapy");
+    if (high.length) return { tier: "High risk", needed: "yes", destination: "secondary", urgency: "soon", timing: "week", reasons: [...high, "Secondary care within 1 week; recall in 1–2 months"], source };
+    const moderate = [];
+    if (f.neuropathy) moderate.push("Neuropathy");
+    if (f.ischaemia) moderate.push("Non-critical ischaemia");
+    if (f.deformity) moderate.push("Deformity");
+    if (f.skinChanges) moderate.push("Skin changes other than callus");
+    if (moderate.length) return { tier: "Moderate risk", needed: "yes", destination: "secondary", urgency: "routine", timing: "3weeks", reasons: [...moderate, "Secondary care within 3 weeks; recall in 3–6 months"], source };
+    return { tier: "Low risk", needed: "no", reasons: ["None of the risk factors: annual review, education and leaflet"], source };
   }
 
   // Follow-up interval suggestion (values match the plan's follow-up options)
@@ -293,10 +317,14 @@ const ClinicalRules = (() => {
   // ---------- Lab reference ranges (DF102) ----------
   const LABS = {
     wbc: { label: "WBC", unit: "×10⁹/L", low: 4.5, high: 11 },
+    hb: { label: "Haemoglobin", unit: "g/dL", bySex: { Male: [13.8, 17.2], Female: [12.1, 15.1] } },
+    // Upper limit 400 (DF102) vs 450 (MOH Table 7): clinical lead to choose
     platelets: { label: "Platelets", unit: "×10⁹/L", low: 150, high: 400 },
     fbg: { label: "Fasting glucose", unit: "mg/dL", low: 70, high: 100 },
     hba1c: { label: "HbA1c", unit: "%", high: 7, highLabel: "Above target" },
-    creatinine: { label: "Creatinine", unit: "µmol/L" },
+    urea: { label: "Urea", unit: "mg/dL" },
+    creatinine: { label: "Creatinine", unit: "mg/dL", bySex: { Male: [0.74, 1.35], Female: [0.59, 1.04] } },
+    egfr: { label: "eGFR", unit: "mL/min/1.73 m²" },
     crp: { label: "CRP", unit: "mg/L", high: 10 },
     esr: { label: "ESR", unit: "mm/hr", high: 20 },
     procalcitonin: { label: "Procalcitonin", unit: "ng/mL", high: 0.1 },
@@ -304,9 +332,10 @@ const ClinicalRules = (() => {
     albumin: { label: "Albumin", unit: "g/L", low: 35, high: 50 },
   };
 
-  function labFlag(key, value) {
-    const ref = LABS[key];
-    if (!ref || value === null) return null;
+  function labFlag(key, value, sex) {
+    const base = LABS[key];
+    if (!base || value === null) return null;
+    const ref = base.bySex?.[sex] ? { ...base, low: base.bySex[sex][0], high: base.bySex[sex][1] } : base;
     if (ref.high !== undefined && value > ref.high) return ref.highLabel ?? "High";
     if (ref.low !== undefined && value < ref.low) return "Low";
     return null;

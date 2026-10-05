@@ -169,72 +169,6 @@ const ScreeningSchema = {
    "sub": "Test method"
   },
   {
-   "name": "c.left.hallux",
-   "label": "Hallux (plantar)",
-   "type": "radio",
-   "options": [
-    [
-     "detected",
-     "Detected"
-    ],
-    [
-     "absent",
-     "Absent"
-    ],
-    [
-     "not-assessed",
-     "Not assessed"
-    ]
-   ],
-   "required": true,
-   "section": "C",
-   "sub": "Protective sensation"
-  },
-  {
-   "name": "c.left.mth1",
-   "label": "1st metatarsal head",
-   "type": "radio",
-   "options": [
-    [
-     "detected",
-     "Detected"
-    ],
-    [
-     "absent",
-     "Absent"
-    ],
-    [
-     "not-assessed",
-     "Not assessed"
-    ]
-   ],
-   "required": true,
-   "section": "C",
-   "sub": "Protective sensation"
-  },
-  {
-   "name": "c.left.mth5",
-   "label": "5th metatarsal head",
-   "type": "radio",
-   "options": [
-    [
-     "detected",
-     "Detected"
-    ],
-    [
-     "absent",
-     "Absent"
-    ],
-    [
-     "not-assessed",
-     "Not assessed"
-    ]
-   ],
-   "required": true,
-   "section": "C",
-   "sub": "Protective sensation"
-  },
-  {
    "name": "c.right.hallux",
    "label": "Hallux (plantar)",
    "type": "radio",
@@ -280,6 +214,72 @@ const ScreeningSchema = {
   },
   {
    "name": "c.right.mth5",
+   "label": "5th metatarsal head",
+   "type": "radio",
+   "options": [
+    [
+     "detected",
+     "Detected"
+    ],
+    [
+     "absent",
+     "Absent"
+    ],
+    [
+     "not-assessed",
+     "Not assessed"
+    ]
+   ],
+   "required": true,
+   "section": "C",
+   "sub": "Protective sensation"
+  },
+  {
+   "name": "c.left.hallux",
+   "label": "Hallux (plantar)",
+   "type": "radio",
+   "options": [
+    [
+     "detected",
+     "Detected"
+    ],
+    [
+     "absent",
+     "Absent"
+    ],
+    [
+     "not-assessed",
+     "Not assessed"
+    ]
+   ],
+   "required": true,
+   "section": "C",
+   "sub": "Protective sensation"
+  },
+  {
+   "name": "c.left.mth1",
+   "label": "1st metatarsal head",
+   "type": "radio",
+   "options": [
+    [
+     "detected",
+     "Detected"
+    ],
+    [
+     "absent",
+     "Absent"
+    ],
+    [
+     "not-assessed",
+     "Not assessed"
+    ]
+   ],
+   "required": true,
+   "section": "C",
+   "sub": "Protective sensation"
+  },
+  {
+   "name": "c.left.mth5",
    "label": "5th metatarsal head",
    "type": "radio",
    "options": [
@@ -1887,5 +1887,103 @@ const ScreeningSchema = {
    "section": "J",
    "sub": "Ulcer locations"
   }
- ]
+ ],
+ "footDiagram": {
+  "outline": "M22,48 C18,62 18,80 22,95 C26,115 30,135 30,155 C30,175 28,190 34,203 C40,214 62,214 68,203 C74,190 72,172 74,150 C76,128 86,108 90,88 C94,70 92,56 86,50 C72,44 36,42 22,48 Z",
+  "toes": [
+   [
+    "hallux",
+    30,
+    28,
+    11,
+    14
+   ],
+   [
+    "toe2",
+    50,
+    20,
+    7,
+    9
+   ],
+   [
+    "toe3",
+    63,
+    24,
+    6.5,
+    8.5
+   ],
+   [
+    "toe4",
+    74,
+    31,
+    6,
+    8
+   ],
+   [
+    "toe5",
+    83,
+    41,
+    5.5,
+    7
+   ]
+  ],
+  "mths": [
+   [
+    "mth1",
+    32,
+    66,
+    9
+   ],
+   [
+    "mth2",
+    50,
+    62,
+    6.5
+   ],
+   [
+    "mth3",
+    62.5,
+    64,
+    5.5
+   ],
+   [
+    "mth4",
+    73.5,
+    68.5,
+    5.5
+   ],
+   [
+    "mth5",
+    82.5,
+    75,
+    5.5
+   ]
+  ],
+  "midfoot": [
+   58,
+   125,
+   18,
+   26
+  ],
+  "heel": [
+   51,
+   188,
+   16,
+   17
+  ],
+  "labels": {
+   "hallux": "Hallux",
+   "toe2": "2nd toe",
+   "toe3": "3rd toe",
+   "toe4": "4th toe",
+   "toe5": "5th toe",
+   "mth1": "1st metatarsal head",
+   "mth2": "2nd metatarsal head",
+   "mth3": "3rd metatarsal head",
+   "mth4": "4th metatarsal head",
+   "mth5": "5th metatarsal head",
+   "midfoot": "Midfoot",
+   "heel": "Heel"
+  }
+ }
 };

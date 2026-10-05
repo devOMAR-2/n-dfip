@@ -45,6 +45,7 @@
   }
 
   function cycleMarker(marker) {
+    if (form.dataset.readonly) return;
     const current = radioValue(marker.dataset.target);
     const next = SENS_CYCLE[(SENS_CYCLE.indexOf(current) + 1) % SENS_CYCLE.length];
     setRadio(marker.dataset.target, next);
@@ -88,7 +89,7 @@
     const box = shape.getBBox();
     if (!box.width) return null; // not laid out yet (section closed)
     const x = box.x + box.width / 2;
-    return { x: svg.dataset.side === "left" ? 100 - x : x, y: box.y + box.height / 2 };
+    return { x: svg.hasAttribute("data-mirrored") ? 100 - x : x, y: box.y + box.height / 2 };
   }
 
   function renderPins() {
@@ -123,6 +124,7 @@
   }
 
   ulcerMap.addEventListener("click", (event) => {
+    if (form.dataset.readonly) return;
     const zone = event.target.closest(".foot-zone");
     if (!zone) return;
     const svg = zone.closest("svg");

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="800" height="600" role="img" aria-label="Demo illustration of a plantar wound under the right first metatarsal head">
+  <rect width="400" height="300" fill="#f3ece6"/>
+  <text x="16" y="26" font-family="Arial, sans-serif" font-size="13" fill="#5c1a2c">DEMO ILLUSTRATION · fictional patient · not a real photo</text>
+  <path d="M140 60 C120 90 118 140 128 180 C138 220 150 250 175 268 C200 284 245 282 262 262 C282 238 276 200 282 160 C288 120 300 92 296 70 C290 46 168 40 140 60 Z" fill="#e9c9b6" stroke="#b98b74" stroke-width="3"/>
+  <ellipse cx="160" cy="44" rx="20" ry="24" fill="#e9c9b6" stroke="#b98b74" stroke-width="3"/>
+  <ellipse cx="200" cy="34" rx="13" ry="17" fill="#e9c9b6" stroke="#b98b74" stroke-width="3"/>
+  <ellipse cx="231" cy="38" rx="12" ry="15" fill="#e9c9b6" stroke="#b98b74" stroke-width="3"/>
+  <ellipse cx="258" cy="48" rx="11" ry="14" fill="#e9c9b6" stroke="#b98b74" stroke-width="3"/>
+  <ellipse cx="282" cy="64" rx="10" ry="12" fill="#e9c9b6" stroke="#b98b74" stroke-width="3"/>
+  <ellipse cx="166" cy="104" rx="30" ry="24" fill="#d8a68e" opacity="0.6"/>
+  <ellipse cx="166" cy="104" rx="19" ry="15" fill="#a8455b"/>
+  <ellipse cx="166" cy="104" rx="11" ry="8" fill="#c9a24b" opacity="0.8"/>
+  <line x1="140" y1="140" x2="192" y2="140" stroke="#2b2b2b" stroke-width="2"/>
+  <line x1="140" y1="134" x2="140" y2="146" stroke="#2b2b2b" stroke-width="2"/>
+  <line x1="192" y1="134" x2="192" y2="146" stroke="#2b2b2b" stroke-width="2"/>
+  <text x="146" y="160" font-family="Arial, sans-serif" font-size="12" fill="#2b2b2b">2.0 cm</text>
+  <text x="300" y="250" font-family="Arial, sans-serif" font-size="12" fill="#5c1a2c">Right foot, sole</text>
+</svg>

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Demo mailbox · N-DFIP</title>
+    <link rel="stylesheet" href="./styles/shared.css" />
+    <script src="./scripts/db.js"></script>
+    <script src="./scripts/auth.js"></script>
+    <script src="./scripts/staff.js"></script>
+  </head>
+  <body>
+    <main class="page-content mailbox-page">
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="./ndfip-login-preview.html">Sign in</a>
+        <span aria-hidden="true">/</span>
+        <span aria-current="page">Demo mailbox</span>
+      </nav>
+
+      <div class="page-header">
+        <h1 class="page-title">Demo mailbox</h1>
+        <p class="page-subtitle">E-mails the platform has sent, such as password reset links. In production these are real e-mails delivered to each employee's own inbox; nobody else can read them.</p>
+      </div>
+
+      <div class="mailbox-filter">
+        <label class="label" for="mailbox-to">Show e-mails to</label>
+        <select class="input select" id="mailbox-to">
+          <option value="">Everyone</option>
+        </select>
+      </div>
+
+      <div id="mailbox" aria-live="polite"></div>
+    </main>
+
+    <script>
+      (() => {
+        const host = document.getElementById("mailbox");
+        const filter = document.getElementById("mailbox-to");
+        const fmt = (iso) => new Date(iso).toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
+        const el = (tag, cls, text) => {
+          const n = document.createElement(tag);
+          if (cls) n.className = cls;
+          if (text !== undefined) n.textContent = text;
+          return n;
+        };
+
+        function render() {
+          const all = Auth.mailbox().slice().reverse();
+          const recipients = [...new Map(all.map((m) => [m.to, m.toName])).entries()];
+          const current = filter.value;
+          filter.replaceChildren(new Option("Everyone", ""), ...recipients.map(([to, name]) => new Option(`${name} <${to}>`, to, false, to === current)));
+          const list = all.filter((m) => !filter.value || m.to === filter.value);
+          host.replaceChildren();
+          if (!list.length) {
+            const empty = el("section", "empty-state");
+            empty.innerHTML = '<div class="empty-state__icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="16" x="2" y="4" rx="2" /><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></svg></div>';
+            empty.append(el("h2", "empty-state__title", "No e-mails yet"), el("p", "empty-state__text", "Password reset links appear here after someone uses Forgot password? or an administrator sends a reset from Settings › Staff."));
+            host.append(empty);
+            return;
+          }
+          const ul = el("ul", "mail-list");
+          for (const m of list) {
+            const li = el("li", "mail-item");
+            const head = el("div", "mail-item__head");
+            const who = el("div");
+            who.append(el("p", "mail-item__subject", m.subject), el("p", "mail-item__to", `To ${m.toName} <${m.to}>`));
+            head.append(who, el("time", "mail-item__time", fmt(m.at)));
+            li.append(head);
+            for (const line of m.body ?? []) li.append(el("p", "mail-item__line", line));
+            if (m.link) {
+              const a = el("a", "btn btn-primary btn-sm mail-item__link", "Reset my password");
+              a.href = `./${m.link}`;
+              const check = Auth.checkResetToken(new URLSearchParams(m.link.split("?")[1]).get("token"));
+              const state = check.ok ? null : { used: "Link already used", expired: "Link expired", unknown: "Link replaced by a newer one" }[check.reason];
+              const row = el("div", "mail-item__actions");
+              row.append(a);
+              if (state) row.append(el("span", "badge badge-muted", state));
+              li.append(row);
+            }
+            ul.append(li);
+          }
+          host.append(ul);
+        }
+
+        filter.addEventListener("change", render);
+        window.addEventListener("storage", (e) => e.key === "ndfip.mailbox" && render());
+        render();
+      })();
+    </script>
+  </body>
+</html>

@@ -1,8 +1,37 @@
 // Diabetic Foot clinic: select a patient (search dialog) and show their summary.
-// Needs auth.js and patients.js loaded first.
+// Needs auth.js, org.js, privacy.js, privacy-ui.js and patients.js loaded first.
+// Patient data follows the role's visibility settings (UAT-02); hidden data can be
+// opened with emergency access (reason required, logged and flagged).
+// "Working in" picks the clinic for walk-in screenings when the user has several (UAT-01).
 
 (() => {
+  if (typeof Access !== "undefined" && Access.denied) return;
+  // Only roles that can screen see "Start Screening" (F-01)
+  if (typeof Access !== "undefined" && !Access.canAny(["screening.perform", "screening.pull"])) {
+    document.querySelectorAll('a[href="./screening.html"]').forEach((a) => (a.hidden = true));
+  }
   const STORAGE_KEY = "ndfip.df.patient";
+
+  // ---------- Working clinic (UAT-01) ----------
+
+  const picker = document.getElementById("clinic-picker");
+  const clinicSelect = document.getElementById("working-clinic");
+  function renderPicker() {
+    if (!picker || typeof Org === "undefined") return;
+    const open = Org.clinicsInScope().filter(Org.active);
+    if (open.length < 2) {
+      picker.hidden = true;
+      return;
+    }
+    const current = Org.workingClinic();
+    clinicSelect.replaceChildren(...open.map((c) => new Option(Org.clinicLabel(c.id), c.id, false, c.id === current)));
+    picker.hidden = false;
+  }
+  clinicSelect?.addEventListener("change", () => {
+    Org.setWorkingClinic(clinicSelect.value);
+    document.dispatchEvent(new CustomEvent("clinic:change", { detail: clinicSelect.value }));
+  });
+  renderPicker();
 
   const dialog = document.getElementById("patient-search");
   const form = document.getElementById("patient-search-form");
@@ -123,24 +152,27 @@
         text.className = "result-item__text";
         const name = document.createElement("span");
         name.className = "result-item__name";
-        name.textContent = patient.name;
+        name.textContent = Privacy.name(patient.name, patient);
         const meta = document.createElement("span");
         meta.className = "result-item__meta";
         meta.textContent = [
           patient.fileNumber,
-          `ID ${patient.nationalId}`,
-          `${plural(Patients.ageOn(patient.dob), "year")} · ${patient.sex}`,
+          `ID ${Privacy.nationalId(patient.nationalId, patient)}`,
+          Privacy.ageVisible(patient) ? `${plural(Patients.ageOn(patient.dob), "year")} · ${patient.sex}` : patient.sex,
         ].join(" · ");
         text.append(name, meta);
+        button.append(text);
 
-        const badge = document.createElement("span");
-        riskBadge(badge, patient.iwgdfRisk);
-        if (patient.activeProblem) {
-          badge.className = "badge badge-danger";
-          badge.textContent = Patients.ACTIVE_PROBLEM[patient.activeProblem.type];
+        // Risk and active problems are medical data
+        if (Privacy.medicalVisible(patient)) {
+          const badge = document.createElement("span");
+          riskBadge(badge, patient.iwgdfRisk);
+          if (patient.activeProblem) {
+            badge.className = "badge badge-danger";
+            badge.textContent = Patients.ACTIVE_PROBLEM[patient.activeProblem.type];
+          }
+          button.append(badge);
         }
-
-        button.append(text, badge);
         item.append(button);
         return item;
       }),
@@ -215,20 +247,54 @@
     return sides.length ? sides.join(", ") : "None";
   }
 
+  // One banner per patient when the role can't see everything (UAT-02)
+  function renderPrivacyBanner(patient) {
+    let banner = summary.querySelector("[data-privacy-banner]");
+    if (!Privacy.anythingHidden(patient)) {
+      banner?.remove();
+      return;
+    }
+    if (!banner) {
+      banner = document.createElement("div");
+      banner.className = "callout callout-warning privacy-banner";
+      banner.dataset.privacyBanner = "";
+      summary.querySelector(".patient-summary__header").after(banner);
+    }
+    const text = document.createElement("div");
+    const title = document.createElement("strong");
+    title.textContent = "Some of this patient's data is hidden for your role";
+    const p = document.createElement("p");
+    const button = PrivacyUI.emergencyButton(patient, () => renderSummary(patient));
+    p.textContent = button
+      ? "In an emergency you can open the full record. You'll be asked for a reason, which is logged and reviewed."
+      : "Ask a colleague with emergency access if you need the full record.";
+    text.append(title, p);
+    if (button) text.append(button);
+    banner.replaceChildren(text);
+  }
+
   function renderSummary(patient) {
-    setField("initials", initials(patient.name));
-    setField("name", patient.name);
+    const general = Privacy.level("general", patient.fileNumber);
+    setField("initials", general === "hidden" ? "?" : initials(patient.name));
+    setField("name", Privacy.name(patient.name, patient));
     setField("fileNumber", patient.fileNumber);
-    setField("nationalId", patient.nationalId);
-    setField("age", plural(Patients.ageOn(patient.dob), "year"));
+    setField("nationalId", Privacy.nationalId(patient.nationalId, patient));
+    setField("age", Privacy.ageVisible(patient) ? plural(Patients.ageOn(patient.dob), "year") : "Hidden");
     setField("sex", patient.sex);
-    setField("phone", formatPhone(patient.phone));
+    setField("phone", general === "visible" ? formatPhone(patient.phone) : Privacy.phone(patient.phone, patient));
     setField("careLevel", Patients.CARE_LEVEL[patient.careLevel]);
-    riskBadge(summary.querySelector('[data-field="riskBadge"]'), patient.iwgdfRisk);
+    renderPrivacyBanner(patient);
+
+    // Medical record: risk, active problem, history, labs, notes
+    const medical = Privacy.medicalVisible(patient);
+    const riskEl = summary.querySelector('[data-field="riskBadge"]');
+    riskEl.hidden = !medical;
+    summary.querySelector(".detail-grid").hidden = !medical;
+    riskBadge(riskEl, patient.iwgdfRisk);
 
     const problemBadge = summary.querySelector('[data-field="problemBadge"]');
     const callout = summary.querySelector('[data-field="problemCallout"]');
-    const problem = patient.activeProblem;
+    const problem = medical ? patient.activeProblem : null;
     problemBadge.hidden = !problem;
     callout.hidden = !problem;
     if (problem) {
@@ -281,6 +347,9 @@
     try {
       sessionStorage.setItem(STORAGE_KEY, fileNumber);
     } catch {}
+    if (typeof Audit !== "undefined") {
+      Audit.log("patient.view", { patient: fileNumber, clinicId: Org.workingClinic(), action: "Patient summary viewed (Diabetic Foot clinic page)" });
+    }
     renderSummary(patient);
     document.getElementById("patient-name").focus();
   }

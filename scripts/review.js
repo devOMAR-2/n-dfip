@@ -3,6 +3,7 @@
 // Needs auth.js, patients.js, screening-schema.js, screening-store.js, clinical-rules.js.
 
 (() => {
+  if (Access.denied) return;
   const R = ClinicalRules;
   const form = document.getElementById("review-form");
 
@@ -10,23 +11,96 @@
 
   const id = new URLSearchParams(location.search).get("id");
   const record = id && ScreeningStore.getById(id);
+
+  // Page states (UAT-19): a file that doesn't exist or isn't in the user's clinics says so
+  function stateBox(title, text, link = ["./home.html", "Back to home"]) {
+    const box = document.createElement("section");
+    box.className = "empty-state";
+    box.innerHTML = '<h2 class="empty-state__title"></h2><p class="empty-state__text"></p><a class="btn btn-primary"></a>';
+    box.querySelector("h2").textContent = title;
+    box.querySelector("p").textContent = text;
+    box.querySelector("a").href = link[0];
+    box.querySelector("a").textContent = link[1];
+    const main = document.querySelector("main");
+    main.replaceChildren(main.querySelector(".breadcrumb"), box);
+  }
   if (!record) {
-    window.location.replace("./diabetic-foot.html");
+    stateBox("File not found", "This encounter doesn't exist, or it was removed from this device.");
+    return;
+  }
+  if (!Org.inScope(record)) {
+    stateBox("Not one of your clinics", `This file belongs to ${Org.clinicLabel(record.clinicId)}. Your assignment doesn't include it.`);
     return;
   }
   const patient = Patients.byFileNumber(record.fileNumber) || { name: record.patientName, riskHistory: {}, allergies: [] };
-  const user = Auth.findUser(Auth.getSessionId()) || { name: Auth.getSessionId() || "Unknown", roleLabel: "" };
+  const user = Access.currentUser();
+  const fmtClock = (iso) => new Date(iso).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+
+  // A file still at stage 1 or 2 can't be reviewed yet (EC-06)
+  if (record.status === "waiting-screening" || record.status === "screening") {
+    const main = document.querySelector("main");
+    const box = document.createElement("section");
+    box.className = "empty-state";
+    const h = document.createElement("h2");
+    h.className = "empty-state__title";
+    h.textContent = "The screening hasn't been sent yet";
+    const p = document.createElement("p");
+    p.className = "empty-state__text";
+    p.textContent = `${record.patientName} is at stage ${ScreeningStore.stageOf(record).n}: ${ScreeningStore.stageOf(record).label}.`;
+    box.append(h, p);
+    if (Access.can("screening.pull")) {
+      const a = document.createElement("a");
+      a.className = "btn btn-primary";
+      a.href = `./screening.html?id=${encodeURIComponent(record.id)}`;
+      a.textContent = "Complete screening";
+      box.append(a);
+    }
+    main.replaceChildren(main.querySelector(".breadcrumb"), box);
+    return;
+  }
 
   record.review ||= { answers: {}, decisions: {}, corrections: [], noteEdited: false, instructionsEdited: false };
   const review = record.review;
-  if (record.status === "awaiting-review") {
-    // Opening the case ends the nurse's ability to edit Part 1
-    record.status = "in-review";
-    review.openedBy = user.name;
-    review.openedAt = new Date().toISOString();
-    ScreeningStore.save(record);
+
+  // Only the lock holder edits; everyone else sees the file read-only (F-02, UAT-09)
+  let viewOnly = null;
+  let holding = false;
+  if (record.status === "awaiting-review" || record.status === "in-review") {
+    const lock = ScreeningStore.acquire(record.id, user);
+    if (!lock.ok) {
+      viewOnly = `Under review by ${lock.holder.name} since ${fmtClock(lock.holder.since)}. You can read the file, but only they can change it until they leave or the lock times out.`;
+    } else {
+      holding = true;
+      Object.assign(record, { holder: lock.record.holder });
+      if (record.status === "awaiting-review") {
+        // Starting the review ends the nurse's ability to edit Part 1
+        record.status = "in-review";
+        review.openedBy = user.name;
+        review.openedAt = new Date().toISOString();
+        record.openedAt = review.openedAt;
+        record.openedBy = user.name;
+        try {
+          ScreeningStore.save(record);
+          ScreeningStore.audit("Review started", record);
+        } catch (e) {
+          viewOnly = e.message;
+          holding = false;
+        }
+      }
+    }
   }
-  let locked = record.status === "reviewed";
+  let locked = record.status === "reviewed" || !!viewOnly;
+
+  // Permissions are read at each action as well, so a change in Settings applies at once (EC-07)
+  const can = {
+    get correct() { return Access.can("review.correct"); },
+    get decide() { return Access.can("review.decide"); },
+    get orders() { return Access.can("review.orders"); },
+    get referral() { return Access.can("review.referral"); },
+    get sign() { return Access.can("review.signoff"); },
+    get prescribe() { return Access.can("medication.prescribe"); },
+    get reopen() { return Access.can("review.reopen"); },
+  };
 
   // ---------- Helpers ----------
 
@@ -110,15 +184,21 @@
     const set = (k, v) => ($(`[data-field="${k}"]`).textContent = v);
     const initials = patient.name.split(/\s+/).filter((_, i, a) => i === 0 || i === a.length - 1).map((p) => p[0]).join("");
     set("initials", initials);
-    set("name", patient.name);
+    set("name", Privacy.name(patient.name, record.fileNumber));
     set("fileNumber", record.fileNumber);
-    set("nationalId", patient.nationalId ?? "—");
-    set("age", patient.dob ? plural(Patients.ageOn(patient.dob), "year") : "—");
+    set("nationalId", Privacy.nationalId(patient.nationalId, record.fileNumber));
+    set("age", patient.dob && Privacy.ageVisible(record.fileNumber) ? plural(Patients.ageOn(patient.dob), "year") : "Hidden");
     set("sex", patient.sex ?? "—");
     set("diabetes", patient.diabetesType ? `${patient.diabetesType} · ${plural(patient.diabetesDurationYears, "year")}` : "—");
     set("hba1c", patient.lastHbA1c ? `${patient.lastHbA1c.value}% · ${fmtDate(patient.lastHbA1c.date)}` : "Not recorded");
     set("careLevel", Patients.CARE_LEVEL[patient.careLevel] ?? "—");
     set("allergies", patient.allergies?.length ? `Allergies: ${patient.allergies.join(", ")}` : "No known allergies");
+    // UAT-16: allergies next to the medication box
+    const box = $("[data-med-allergies]");
+    if (box) {
+      box.replaceChildren(el("strong", "", patient.allergies?.length ? "Recorded allergies: " : "Recorded allergies: none"), patient.allergies?.length ? patient.allergies.join(", ") : "");
+      box.classList.toggle("allergy-box--alert", !!patient.allergies?.length);
+    }
     set("screenedBy", `Screened by ${record.submittedBy} · ${fmtDateTime(record.submittedAt)}`);
   }
 
@@ -201,7 +281,7 @@
       body.append(el("span", "finding-cell__trail", `Corrected by ${last.by} · ${fmtDateTime(last.at)}${last.reason ? ` · ${last.reason}` : ""}`));
     }
     cell.append(body);
-    if (!locked && SCHEMA[name]?.type !== "file") {
+    if (!locked && can.correct && SCHEMA[name]?.type !== "file") {
       const button = el("button", "btn btn-ghost btn-xs finding-cell__edit");
       button.type = "button";
       button.innerHTML = PENCIL + "Correct";
@@ -274,7 +354,8 @@
       }
       if (JSON.stringify(to) !== JSON.stringify(current ?? (field.type === "checkbox" ? [] : ""))) {
         review.corrections.push({ field: name, from: current ?? null, to, by: user.name, at: new Date().toISOString(), reason: reason.value.trim() });
-        persist();
+        Audit.forRecord("value.edit", record, `Nurse finding corrected: ${name}`, { field: name, old: [].concat(current ?? "—").join(", "), new: [].concat(to ?? "—").join(", "), reason: reason.value.trim() });
+        commitActions();
       }
       editing = null;
       update({ findings: true });
@@ -311,6 +392,7 @@
       ptb: rv(`${p}.ptb`),
       exposed: rv(`${p}.exposed`) ?? [],
       osteomyelitis: rv(`${p}.osteomyelitis`) ?? "no",
+      abscess: rv(`${p}.abscess`),
       gangrene: rv(`${p}.gangrene`),
       length: rnum(`${p}.length`),
       width: rnum(`${p}.width`),
@@ -381,7 +463,7 @@
       const wifiRec = { id: `wound.${n}.wifi`, group: `wound-${n}`, title: "WIfI components", sys: wifiSys, options: "text", fmt: (v) => v ?? "—" };
       recs.push(infRec, wagRec, sinRec, wifiRec);
       ulcers.push({
-        n, side, ptb: w.ptb, osteomyelitis: w.osteomyelitis, erythemaCm: w.erythemaCm, onset: w.onset,
+        n, side, ptb: w.ptb, osteomyelitis: w.osteomyelitis, abscess: w.abscess, gangrene: w.gangrene, erythemaCm: w.erythemaCm, onset: w.onset,
         signCount: w.signs.filter((s) => s !== "none").length,
         infection: infDecided ?? infSys.value, wagner: decidedValue(wagRec) ?? wagSys.value,
       });
@@ -406,13 +488,32 @@
       return rec ? decidedValue(rec) !== "no" : false;
     };
 
+    // MOH segmentation: acute foot attack -> active foot disease -> high -> moderate -> low
+    const acute = [];
+    if (escalated("esc.sirs") && sirs.count >= 2) acute.push(`Systemically unwell (${sirs.count} SIRS signs)`);
+    for (const u of ulcers) {
+      const sideIschaemic = u.side && (decidedValue(recs.find((r) => r.id === `pad.${u.side}`)) === "yes" || severe[u.side].length > 0);
+      if (sideIschaemic) acute.push(`Ulcer ${u.n} with ischaemia`);
+      if (u.gangrene && u.gangrene !== "none") acute.push(`Ulcer ${u.n}: gangrene`);
+      if ((u.erythemaCm ?? 0) > 2 || u.infection >= 3) acute.push(`Ulcer ${u.n}: cellulitis or spreading infection`);
+      if (u.abscess === "yes") acute.push(`Ulcer ${u.n}: abscess`);
+      if (u.osteomyelitis !== "no") acute.push(`Ulcer ${u.n}: osteomyelitis ${u.osteomyelitis}`);
+    }
+    const active = [];
+    if (ulcers.length) active.push(`${plural(ulcers.length, "active ulcer")}`);
+    if (escalated("esc.charcot")) active.push("Suspected Charcot foot");
+    const skin = R.SIDES.flatMap((s) => [].concat(nv(`f.${s}.skin`) ?? []));
     const referral = R.referral({
-      stability: escalated("esc.unstable") ? stability.value : ulcers.length ? "stable" : null,
-      sirsCount: escalated("esc.sirs") ? sirs.count : 0,
-      charcot: escalated("esc.charcot"),
+      acute,
+      active,
+      neuropathy: lops,
+      ischaemia: pad,
+      deformity,
+      callus: skin.includes("callus"),
+      skinChanges: skin.some((k) => k !== "callus" && k !== "none"),
       severeIschaemia: escalated("esc.ischaemia"),
-      ulcers,
-      risk,
+      previousUlcerOrAmputation: hist.some((h) => h.startsWith("Previous")),
+      renalReplacement: !!patient?.riskHistory?.dialysis,
     });
     const followUp = R.followUp({ risk, ulcers: ulcers.length > 0, infected: ulcers.some((u) => u.infection >= 2) });
     const tests = R.suggestedTests({ ulcers, sirsCount: sirs.count });
@@ -430,6 +531,31 @@
     }
     const escHost = $('[data-recs="escalation"]');
     if (!escHost.children.length) escHost.append(el("p", "field-hint", "No escalation flags."));
+
+    // "Confirm all" for the six per-foot cards; Override stays on each card (F-12)
+    const footHost = $('[data-recs="foot"]');
+    let bar = $("#confirm-all-bar");
+    if (!bar) {
+      bar = el("div", "confirm-all");
+      bar.id = "confirm-all-bar";
+      footHost.before(bar);
+    }
+    const confirmable = model.recs.filter((r) => r.group === "foot" && !decision(r.id, r.sys.value).decided && r.sys.value !== null && r.sys.value !== undefined);
+    bar.replaceChildren();
+    if (!locked && can.decide && confirmable.length) {
+      const b = el("button", "btn btn-primary btn-sm", `Confirm all (${confirmable.length})`);
+      b.type = "button";
+      b.addEventListener("click", () => {
+        if (!Access.can("review.decide")) return;
+        const at = new Date().toISOString();
+        for (const rec of confirmable) review.decisions[rec.id] = { action: "confirm", value: rec.sys.value, sysValue: rec.sys.value, reason: "", by: user.name, at };
+        ScreeningStore.audit("Recommendations confirmed", record, confirmable.map((r) => r.title).join(", "), "recommendation");
+        commitActions();
+        update();
+        $('[data-recs="risk"] .rec-card button')?.focus();
+      });
+      bar.append(b, el("span", "field-hint", "Cards with no system value need Set value."));
+    }
   }
 
   let overriding = null;
@@ -462,7 +588,7 @@
     }
     if (status.children.length) card.append(status);
 
-    if (locked) return card;
+    if (locked || !can.decide) return card;
 
     if (overriding === rec.id) {
       card.append(overrideEditor(rec));
@@ -532,8 +658,12 @@
   }
 
   function decide(rec, action, value, reason) {
+    if (!Access.can("review.decide")) return;
+    Audit.forRecord("recommendation", record, `${action === "confirm" ? "Recommendation confirmed" : "Recommendation overridden"}: ${rec.title}`, {
+      field: rec.id, old: rec.fmt(rec.sys.value), new: rec.fmt(value), reason: reason || null,
+    });
     review.decisions[rec.id] = { action, value, sysValue: rec.sys.value, reason, by: user.name, at: new Date().toISOString() };
-    persist();
+    commitActions();
     update();
   }
 
@@ -558,7 +688,7 @@
     if (model.ulcers.length) alerts.push(["attention", `${plural(model.ulcers.length, "ulcer")}: hands-on evaluation required.`]);
     for (const [key, ref] of Object.entries(R.LABS)) {
       const v = rnum(`r.lab.${key}`);
-      const flag = R.labFlag(key, v);
+      const flag = R.labFlag(key, v, patient?.sex);
       if (flag) alerts.push(["info", `${ref.label} ${v} ${ref.unit}: ${flag.toLowerCase()}.`]);
     }
     if (nv("a.confirmed") === "needs-update") alerts.push(["info", "Nurse flagged patient record details for update."]);
@@ -588,35 +718,33 @@
   function renderSuggestedTests(model) {
     const host = $("[data-suggested]");
     $("[data-suggested-empty]").hidden = model.tests.length > 0;
-    const ordered = new Set(rv("r.orders.labs") ?? []);
+    const orders = typeof TestOrders !== "undefined" ? TestOrders.forRecord(record.id) : [];
     host.replaceChildren();
     for (const test of model.tests) {
       const row = el("div", "suggest-item");
       const text = el("div", "suggest-item__text");
       text.append(el("span", "suggest-item__name", test.label), el("span", "suggest-item__why", test.why));
       row.append(text);
-      if (ordered.has(test.value)) {
-        row.append(el("span", "badge badge-status-complete", "Ordered"));
-      } else if (!locked) {
-        const add = el("button", "btn btn-outline btn-sm", "Add to orders");
-        add.type = "button";
-        add.addEventListener("click", () => setAndNotify("r.orders.labs", [...ordered, test.value]));
-        row.append(add);
-      }
+      const order = orders.find((o) => o.testId === test.value);
+      row.append(order ? el("span", "badge badge-status-progress", TestOrders.stateText(order)) : el("span", "badge badge-muted", "Not ordered"));
       host.append(row);
     }
-    if (!locked && model.tests.some((t) => !ordered.has(t.value))) {
-      const all = el("button", "btn btn-outline btn-sm", "Add all suggested");
-      all.type = "button";
-      all.addEventListener("click", () => setAndNotify("r.orders.labs", [...new Set([...ordered, ...model.tests.map((t) => t.value)])]));
-      host.append(all);
+    if (model.tests.length && !locked && can.orders) {
+      const go = el("button", "btn btn-outline btn-sm", "Order or dismiss in Orders");
+      go.type = "button";
+      go.addEventListener("click", () => {
+        const target = $("[data-test-orders]");
+        layoutUI.reveal(target);
+        target.scrollIntoView({ block: "start" });
+      });
+      host.append(go);
     }
   }
 
   function renderLabFlags() {
     $$("[data-lab]").forEach((field) => {
       const key = field.dataset.lab;
-      const flag = R.labFlag(key, rnum(`r.lab.${key}`));
+      const flag = R.labFlag(key, rnum(`r.lab.${key}`), patient?.sex);
       const badge = $("[data-lab-flag]", field);
       badge.hidden = !flag;
       badge.textContent = flag ?? "";
@@ -741,9 +869,9 @@
   }
 
   const OPTION_TEXT = {
-    destination: { secondary: "Secondary Care", private: "Private Center", vascular: "Vascular", "wound-care": "Wound Care", tertiary: "Tertiary" },
+    destination: { er: "Emergency department", secondary: "Secondary Care", private: "Private Center", vascular: "Vascular", "wound-care": "Wound Care", tertiary: "Tertiary" },
     urgency: { routine: "Routine", soon: "Soon", urgent: "Urgent", emergency: "Emergency" },
-    timing: { today: "today", "24h": "within 24 h", week: "within 1 week", scheduled: "scheduled" },
+    timing: { today: "today", "24h": "within 24 h", week: "within 1 week", "3weeks": "within 3 weeks", scheduled: "scheduled" },
     followup: { "48h": "48 hours", "1w": "1 week", "2w": "2 weeks", "1m": "1 month", "1-3m": "1–3 months", "3-6m": "3–6 months", "6-12m": "6–12 months", "12m": "12 months" },
   };
 
@@ -752,15 +880,15 @@
     const apply = $("[data-apply-referral]");
     const s = model.referral;
     if (!s) {
-      text.textContent = "Decide the risk category and wound classifications to get a suggestion.";
+      text.textContent = "Confirm LOPS, PAD and deformity for both feet to get a suggestion.";
       apply.hidden = true;
       return;
     }
     text.replaceChildren(
-      el("strong", "", s.needed === "yes" ? `Refer: ${OPTION_TEXT.destination[s.destination]} · ${OPTION_TEXT.urgency[s.urgency]} · ${OPTION_TEXT.timing[s.timing]}` : "No referral needed"),
+      el("strong", "", s.needed === "yes" ? `${s.tier}. Refer: ${OPTION_TEXT.destination[s.destination]} · ${OPTION_TEXT.urgency[s.urgency]} · ${OPTION_TEXT.timing[s.timing]}` : `${s.tier}. No referral needed`),
       el("p", "", `${s.reasons.join("; ")} (${s.source})`),
     );
-    apply.hidden = locked;
+    apply.hidden = locked || !can.referral;
   }
 
   function renderFollowUp(model) {
@@ -822,7 +950,7 @@
     if (review.corrections.length) {
       push(`Corrections to nurse findings: ${review.corrections.map((c) => `${SCHEMA[c.field]?.label ?? c.field}${/\.(left|right)\./.test(c.field) ? ` (${c.field.split(".")[1]})` : ""} ${formatValue(c.field, c.from)} → ${formatValue(c.field, c.to)}`).join("; ")}.`);
     }
-    const labs = Object.entries(R.LABS).filter(([k]) => rv(`r.lab.${k}`)).map(([k, ref]) => `${ref.label} ${rv(`r.lab.${k}`)}${R.labFlag(k, rnum(`r.lab.${k}`)) ? ` (${R.labFlag(k, rnum(`r.lab.${k}`)).toLowerCase()})` : ""}`);
+    const labs = Object.entries(R.LABS).filter(([k]) => rv(`r.lab.${k}`)).map(([k, ref]) => `${ref.label} ${rv(`r.lab.${k}`)}${R.labFlag(k, rnum(`r.lab.${k}`), patient?.sex) ? ` (${R.labFlag(k, rnum(`r.lab.${k}`), patient?.sex).toLowerCase()})` : ""}`);
     if (labs.length) push(`Labs: ${labs.join(", ")}.`);
     push();
     push("ASSESSMENT");
@@ -844,11 +972,15 @@
     push();
     push("PLAN");
     const orders = [];
-    if ((rv("r.orders.labs") ?? []).length) orders.push(`Labs: ${formatPrac("r.orders.labs")}`);
+    const tests = ordersPanel?.summary() ?? [];
+    if (tests.length) orders.push(`Tests: ${tests.join("; ")}`);
     if (rv("r.orders.labsOther")) orders.push(`Other tests: ${rv("r.orders.labsOther")}`);
-    if ((rv("r.orders.imaging") ?? []).length) orders.push(`Imaging: ${formatPrac("r.orders.imaging")}`);
     if ((rv("r.orders.referrals") ?? []).length) orders.push(`Referral orders: ${formatPrac("r.orders.referrals")}`);
     orders.forEach((o) => push(`- ${o}`));
+    if (rv("r.med.text")) {
+      push("- Medications:");
+      rv("r.med.text").split(/\n+/).filter((l) => l.trim()).forEach((l) => push(`  - ${l.trim()}`));
+    }
     if (rv("r.inf.antibiotics")) push(`- Antibiotics: ${formatPrac("r.inf.antibiotics")}${rv("r.inf.agent") ? `, ${rv("r.inf.agent")}` : ""}${rv("r.inf.days") ? ` for ${rv("r.inf.days")} days` : ""}.`);
     if ((rv("r.inf.reassess") ?? []).length) push("- Reassess infection in 24–48 h.");
     if (rv("r.inf.admit") === "yes") push("- Hospital admission arranged.");
@@ -876,11 +1008,13 @@
     if (rv("r.plan.followup")) lines.push(`Your next foot check: in ${OPTION_TEXT.followup[rv("r.plan.followup")]}.`);
     if (rv("r.ref.needed") === "yes") {
       const where = {
-        tertiary: "the Diabetic Foot Center of Excellence", secondary: "the Diabetic Foot Secondary Care Unit",
+        er: "the Emergency Department", tertiary: "the Diabetic Foot Center of Excellence", secondary: "the Diabetic Foot Secondary Care Unit",
         vascular: "the vascular team", "wound-care": "the wound care clinic", private: "a private center",
       }[rv("r.ref.destination")] ?? "a specialist service";
       lines.push(
-        rv("r.ref.urgency") === "emergency"
+        rv("r.ref.destination") === "er"
+          ? "Go to the Emergency Department today. Do not wait for an appointment."
+          : rv("r.ref.urgency") === "emergency"
           ? `Go to the Emergency Department today. You are being referred to ${where}.`
           : `You are being referred to ${where} (${OPTION_TEXT.timing[rv("r.ref.timing")] ?? "date to be confirmed"}).`,
       );
@@ -906,7 +1040,13 @@
 
   // ---------- Status, progress, validation ----------
 
-  const STATUS_TEXT = { "awaiting-review": ["Awaiting review", "badge-status-progress"], "in-review": ["In review", "badge-status-progress"], reviewed: ["Reviewed", "badge-status-complete"] };
+  const STATUS_TEXT = {
+    "waiting-screening": ["Waiting for screening", "badge-muted"],
+    screening: ["Screening", "badge-status-progress"],
+    "awaiting-review": ["Awaiting review", "badge-status-progress"],
+    "in-review": ["In review", "badge-status-progress"],
+    reviewed: ["Signed", "badge-status-complete"],
+  };
 
   function pendingRecs(model) {
     return model.recs.filter((r) => !decision(r.id, r.sys.value).decided);
@@ -960,8 +1100,12 @@
       badge.className = `badge form-section__status ${cls}`;
     }
     const missing = requiredQs().filter((q) => !isAnswered(q)).length;
-    $("#review-progress").textContent = locked
+    $("#review-progress").textContent = viewOnly
+      ? "Read only: another practitioner holds this file"
+      : locked
       ? `Signed by ${review.signedBy}`
+      : !can.sign
+      ? "Your role can't sign off reviews"
       : pending.length || missing
         ? [pending.length ? plural(pending.length, "decision") + " pending" : null, missing ? plural(missing, "required field") + " missing" : null].filter(Boolean).join(" · ")
         : "Ready to sign";
@@ -975,7 +1119,9 @@
   function collectReviewAnswers() {
     const answers = {};
     for (const field of form.elements) {
-      if (!field.name || !field.name.startsWith("r.")) continue;
+      if (!field.name || !field.name.startsWith("r.") || isHidden(field)) continue;
+      // A slider nobody moved has no value yet
+      if (field.type === "range" && !field.dataset.touched && !(field.name in (record.review?.answers ?? {}))) continue;
       if (field.type === "checkbox") {
         if (field.checked) (answers[field.name] ||= []).push(field.value);
       } else if (field.type === "radio") {
@@ -985,11 +1131,100 @@
     return answers;
   }
 
-  let saveTimer = null;
-  function persist() {
-    review.answers = collectReviewAnswers();
-    clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => ScreeningStore.save(record), 150);
+  // Typed values stay in the form (and the draft) until Save or Sign
+  function persist() {}
+
+  const showError = (message) => {
+    let box = $("#review-notice");
+    if (!box) {
+      box = el("div", "callout callout-destructive");
+      box.id = "review-notice";
+      box.setAttribute("role", "alert");
+      (trackerEl ?? $(".page-header")).after(box);
+    }
+    box.className = "callout callout-destructive";
+    box.textContent = message;
+    box.hidden = false;
+  };
+  const showInfo = (message) => {
+    let box = $("#review-notice");
+    if (!box) {
+      box = el("div", "callout callout-success");
+      box.id = "review-notice";
+      box.setAttribute("role", "status");
+      (trackerEl ?? $(".page-header")).after(box);
+    }
+    box.className = "callout callout-success";
+    box.textContent = message;
+    box.hidden = false;
+  };
+
+  // Decisions and corrections: written straight away on top of the stored copy (EC-01: refused
+  // if someone else changed the file since it was opened; EC-15: refused if the save fails)
+  function commitActions() {
+    if (!holding) return false;
+    const stored = ScreeningStore.getById(record.id);
+    const next = { ...stored, rev: record.rev, review: { ...(stored.review ?? {}), decisions: review.decisions, corrections: review.corrections } };
+    try {
+      ScreeningStore.save(next);
+      record.rev = next.rev;
+      return true;
+    } catch (e) {
+      showError(e.message);
+      return false;
+    }
+  }
+
+  const fmtVal = (v) => (v === undefined || v === null || v === "" ? "—" : [].concat(v).join(", "));
+
+  // Everything typed on the page, as saved in the record
+  function fullAnswers() {
+    const answers = collectReviewAnswers();
+    if (!review.noteEdited) delete answers["r.note"];
+    if (!review.instructionsEdited) delete answers["r.instructions"];
+    return answers;
+  }
+
+  let busy = false;
+  // Save button / "Save and leave". Logs every changed value with old and new (UAT-05).
+  async function saveRecord({ extra = {}, releaseLock = false, quiet = false } = {}) {
+    if (!holding || busy) return false;
+    busy = true;
+    const btn = $("#save-review");
+    if (btn) btn.disabled = true;
+    try {
+      await Db.delay(150);
+      const stored = ScreeningStore.getById(record.id);
+      const before = stored.review?.answers ?? {};
+      const answers = fullAnswers();
+      const foreign = layoutUI.collect();
+      const next = {
+        ...stored,
+        ...extra.record,
+        rev: record.rev,
+        answers: { ...stored.answers, ...foreign.answers },
+        custom: { ...(stored.custom ?? {}), ...foreign.custom },
+        review: { ...(stored.review ?? {}), ...review, answers, ...extra.review },
+      };
+      ScreeningStore.save(next, { releaseLock });
+      record.rev = next.rev;
+      Object.assign(record, next);
+      for (const n of new Set([...Object.keys(before), ...Object.keys(answers)])) {
+        if (n === "r.note" || n === "r.instructions" || n.startsWith("r.sign.")) continue;
+        if (JSON.stringify(before[n] ?? null) === JSON.stringify(answers[n] ?? null)) continue;
+        const type = n === "r.med.text" ? "medication" : "value.edit";
+        Audit.forRecord(type, record, type === "medication" ? "Medication entered" : `Value recorded: ${n}`, { field: n, old: fmtVal(before[n]), new: fmtVal(answers[n]) });
+      }
+      draft.afterSave();
+      if (!quiet) showInfo(`Saved at ${fmtClock(new Date().toISOString())}.`);
+      return true;
+    } catch (e) {
+      showError(e.message);
+      return false;
+    } finally {
+      busy = false;
+      if (btn) btn.disabled = false;
+    }
   }
 
   function restore() {
@@ -1018,13 +1253,18 @@
     renderFollowUp(model);
     $$('[data-reveal="antibiotic-detail"]').forEach((n) => (n.hidden = !["oral", "iv"].includes(rv("r.inf.antibiotics"))));
     $$('[data-reveal="referral"]').forEach((n) => (n.hidden = rv("r.ref.needed") !== "yes"));
+    const declineQ = $("[data-decline-reason]");
+    if (declineQ) declineQ.hidden = !rv("r.ref.needed") || followedSuggestion();
+    ordersPanel?.update({ suggested: model.tests, readOnly: locked || !can.orders, canOrder: can.orders });
     if (!review.noteEdited && !locked) setField("r.note", buildNote(model));
     if (!review.instructionsEdited && !locked) setField("r.instructions", buildInstructions(model));
     $("[data-note-edited]").hidden = !review.noteEdited;
     $("[data-instructions-edited]").hidden = !review.instructionsEdited;
     form.querySelectorAll(".q--invalid").forEach((q) => (isHidden(q) || isAnswered(q)) && q.dataset.required && setInvalid(q, false));
     updateSectionStatus(model);
+    if (layoutReady) layoutUI.refresh();
   }
+  let layoutReady = false;
 
   // ---------- Events ----------
 
@@ -1045,6 +1285,7 @@
 
   form.addEventListener("input", (event) => {
     const input = event.target;
+    if (input.type === "range") input.dataset.touched = "true";
     if (input.name === "r.note") {
       review.noteEdited = true;
       $("[data-note-edited]").hidden = false;
@@ -1082,16 +1323,72 @@
     }),
   );
 
-  $("[data-print-instructions]").addEventListener("click", () => {
-    const text = rv("r.instructions");
-    const win = window.open("", "_blank", "width=720,height=900");
-    if (!win) return;
-    win.document.title = `Foot care instructions · ${patient.name}`;
-    const pre = win.document.createElement("pre");
-    pre.style.cssText = "font: 15px/1.6 system-ui, sans-serif; white-space: pre-wrap; padding: 24px;";
-    pre.textContent = text;
-    win.document.body.append(pre);
+  function printDocument(title, body) {
+    if (!Access.can("notes.print")) {
+      showError("Your role can't print or export notes.");
+      return;
+    }
+    const win = window.open("", "_blank", "width=800,height=900");
+    if (!win) {
+      showError("The print window was blocked. Allow pop-ups for this site and try again.");
+      return;
+    }
+    const d = win.document;
+    d.title = `${title} · ${record.fileNumber}`;
+    const style = d.createElement("style");
+    style.textContent = `body{font:14px/1.55 "Space Grotesk",system-ui,sans-serif;color:#1c1917;margin:32px;}
+      h1{font-size:20px;margin:0 0 4px;color:#5c1a2c} .brand{color:#913246;font-weight:700;letter-spacing:.02em}
+      dl{display:grid;grid-template-columns:repeat(3,auto);gap:4px 24px;margin:16px 0;padding:12px 0;border-block:1px solid #e7e5e4}
+      dt{font-size:11px;color:#78716c;text-transform:uppercase} dd{margin:0}
+      pre{white-space:pre-wrap;font:inherit} footer{margin-top:24px;font-size:11px;color:#78716c}
+      @media print{body{margin:16mm}}`;
+    d.head.append(style);
+    const add = (tag, text, cls) => {
+      const n = d.createElement(tag);
+      if (cls) n.className = cls;
+      n.textContent = text;
+      d.body.append(n);
+      return n;
+    };
+    add("div", "N-DFIP · National Diabetic Foot Intelligence Platform", "brand");
+    add("h1", title);
+    const dl = d.createElement("dl");
+    const meta = [
+      ["Patient", Privacy.name(patient.name, record.fileNumber)],
+      ["File no.", record.fileNumber],
+      ["National ID", Privacy.nationalId(patient.nationalId, record.fileNumber)],
+      ["Date of birth", Privacy.dob(patient.dob, record.fileNumber)],
+      ["Clinic", Org.clinicLabel(record.clinicId)],
+      ["Visit", fmtDateTime(review.signedAt ?? record.submittedAt ?? new Date().toISOString())],
+    ];
+    for (const [k, v] of meta) {
+      const dt = d.createElement("dt");
+      dt.textContent = k;
+      const dd = d.createElement("dd");
+      dd.textContent = v;
+      dl.append(dt, dd);
+    }
+    d.body.append(dl);
+    for (const [heading, text] of body) {
+      if (heading) add("h2", heading).style.cssText = "font-size:15px;margin:18px 0 6px";
+      add("pre", text);
+    }
+    add("footer", `Printed by ${user.name} (${user.roleLabel}) on ${fmtDateTime(new Date().toISOString())}. ${review.signedAt ? `Signed by ${review.signedBy}.` : "Not signed yet: draft."}`);
+    Audit.forRecord("export", record, `Printed / exported: ${title}`);
+    win.focus();
     win.print();
+  }
+
+  $("[data-print-instructions]").addEventListener("click", () => printDocument("Patient instructions", [[null, rv("r.instructions") ?? ""]]));
+  $("[data-print-summary]").addEventListener("click", () => {
+    if (!Privacy.medicalVisible(record.fileNumber)) {
+      showError("The medical record is hidden for your role, so the visit summary can't be printed.");
+      return;
+    }
+    printDocument("Visit summary", [
+      ["Clinical note", rv("r.note") ?? ""],
+      ...(rv("r.med.text") ? [["Medications", rv("r.med.text")]] : []),
+    ]);
   });
 
   $("[data-apply-referral]").addEventListener("click", () => {
@@ -1125,10 +1422,18 @@
 
   form.addEventListener("submit", (event) => {
     event.preventDefault();
-    if (locked) return;
+    if (locked || !can.sign || busy) return;
     update();
     const invalid = requiredQs().filter((q) => !isAnswered(q));
-    $$("[data-required]", form).forEach((q) => setInvalid(q, invalid.includes(q)));
+    // Impossible values block sign-off too (EC-08)
+    for (const f of $$("input[type=number]", form)) {
+      if (f.disabled || isHidden(f) || f.checkValidity()) continue;
+      const q = f.closest(".q");
+      if (!q || invalid.includes(q)) continue;
+      setInvalid(q, true, `${f.min !== "" && f.max !== "" ? `Enter a value between ${f.min} and ${f.max}.` : "Enter a valid number."}`);
+      invalid.push(q);
+    }
+    $$("[data-required]", form).forEach((q) => !q.classList.contains("q--range") && setInvalid(q, invalid.includes(q)));
     const signQ = $('[name="r.sign.name"]').closest(".q");
     if (rv("r.sign.name") && !signatureOk()) {
       setInvalid(signQ, true, `Signature must match your name: ${user.name}.`);
@@ -1139,6 +1444,7 @@
 
     if (pending.length) {
       const first = $(`[data-rec="${CSS.escape(pending[0].id)}"]`);
+      layoutUI.reveal(first);
       first.closest(".form-section").open = true;
       first.scrollIntoView({ block: "center" });
       first.classList.add("rec-card--flash");
@@ -1148,39 +1454,158 @@
     }
     if (invalid.length) {
       invalid.forEach((q) => (q.closest(".form-section").open = true));
+      layoutUI.reveal(invalid[0]);
       syncToggle();
       $("input, select, textarea", invalid[0]).focus();
       invalid[0].scrollIntoView({ block: "center" });
       return;
     }
-    $("#confirm-sign-text").textContent = `${patient.name} (${record.fileNumber}). After signing, the review is locked and the note is final.`;
+    $("#confirm-sign-text").textContent = `${Privacy.name(patient.name, record.fileNumber)} (${record.fileNumber}). After signing, the review is locked and the note is final.`;
+    ack.checked = false;
+    ackError.hidden = true;
+    signConfirm.disabled = true;
     confirmDialog.returnValue = "";
     confirmDialog.showModal();
   });
 
-  confirmDialog.addEventListener("close", () => {
+  // UAT-18: the notice must be acknowledged; the Sign button stays off until it is
+  const ack = $("#ack-notice");
+  const ackError = $("#ack-error");
+  const signConfirm = $('#confirm-sign button[value="sign"]');
+  ack.addEventListener("change", () => {
+    signConfirm.disabled = !ack.checked;
+    ackError.hidden = ack.checked;
+  });
+
+  confirmDialog.addEventListener("close", async () => {
     if (confirmDialog.returnValue !== "sign") return;
-    review.answers = collectReviewAnswers();
-    review.signedBy = user.name;
-    review.signedAt = new Date().toISOString();
-    review.finalNote = rv("r.note");
-    record.status = "reviewed";
-    clearTimeout(saveTimer);
-    ScreeningStore.save(record);
+    if (!ack.checked) {
+      ackError.hidden = false;
+      confirmDialog.showModal();
+      return;
+    }
+    const latest = ScreeningStore.getById(record.id);
+    if (!Access.can("review.signoff") || latest?.status !== "in-review" || (ScreeningStore.lockActive(latest) && latest.holder.id !== user.id)) {
+      const why = !Access.can("review.signoff") ? "your role can no longer sign off" : latest?.status === "reviewed" ? `it was already signed by ${latest.review?.signedBy}` : "the file changed or someone else holds it";
+      showError(`Can't sign: ${why}. Nothing was saved.`);
+      Audit.forRecord("signoff", record, `Sign-off refused: ${why}`);
+      return;
+    }
+    const at = new Date().toISOString();
+    const notice = $("[data-sign-notice]")?.textContent ?? "";
+    const ok = await saveRecord({
+      releaseLock: true,
+      quiet: true,
+      extra: {
+        record: { status: "reviewed", signedAt: at },
+        review: { signedBy: user.name, signedById: user.id, signedAt: at, finalNote: rv("r.note"), instructionsText: rv("r.instructions"), medications: rv("r.med.text") ?? "", ack: { at, by: user.name, text: notice } },
+      },
+    });
+    if (!ok) return;
+    Object.assign(review, record.review);
+    holding = false;
+    Audit.forRecord("signoff", record, "Sign-off notice acknowledged", { new: notice });
+    ScreeningStore.audit("Encounter signed", record, "", "signoff");
+    recordReferral();
+    draft.clear();
+    draft.leave();
     lock();
+    renderTracker();
     window.scrollTo({ top: 0 });
   });
 
+  // UAT-12: the referral made, or the suggestion not followed (with the reason)
+  function recordReferral() {
+    if (typeof Referrals === "undefined") return;
+    const s = model.referral;
+    try {
+      if (rv("r.ref.needed") === "yes") {
+        Referrals.create({ record, destination: rv("r.ref.destination"), urgency: rv("r.ref.urgency"), timing: rv("r.ref.timing"), reason: rv("r.ref.reason") ?? "", suggested: !!s && s.needed === "yes" && s.destination === rv("r.ref.destination") });
+      }
+      if (s?.needed === "yes" && !followedSuggestion()) {
+        Referrals.decline({ record, suggestion: { tier: s.tier, destination: s.destination, urgency: s.urgency, timing: s.timing }, reason: rv("r.ref.declineReason") ?? "" });
+      }
+    } catch (e) {
+      showError(`Signed, but the referral couldn't be recorded: ${e.message}`);
+    }
+  }
+  const followedSuggestion = () => {
+    const s = model?.referral;
+    if (!s || s.needed !== "yes") return true;
+    return rv("r.ref.needed") === "yes" && rv("r.ref.destination") === s.destination && rv("r.ref.timing") === s.timing;
+  };
+
+  function reopenButton() {
+    if (!can.reopen || $("#reopen-review")) return;
+    const b = el("button", "btn btn-outline btn-sm", "Reopen with a reason");
+    b.type = "button";
+    b.id = "reopen-review";
+    b.addEventListener("click", async () => {
+      const reason = await askReason("Reopen this signed encounter?", "The signed version stays in the history. Give the reason for the correction.", "Reopen");
+      if (!reason) return;
+      const stored = ScreeningStore.getById(record.id);
+      if (stored.status !== "reviewed" || !Access.can("review.reopen")) {
+        showError("Can't reopen: the file isn't signed any more, or your role can't reopen signed encounters.");
+        return;
+      }
+      const next = {
+        ...stored,
+        status: "in-review",
+        history: [...(stored.history ?? []), { at: new Date().toISOString(), by: user.name, reason, signedBy: stored.review?.signedBy, signedAt: stored.review?.signedAt, review: JSON.parse(JSON.stringify(stored.review)) }],
+        review: { ...stored.review, signedBy: null, signedAt: null, ack: null, reopenedBy: user.name, reopenedAt: new Date().toISOString() },
+      };
+      try {
+        ScreeningStore.save(next);
+      } catch (e) {
+        showError(e.message);
+        return;
+      }
+      Audit.forRecord("signoff", next, "Signed encounter reopened", { reason });
+      location.reload();
+    });
+    $("#review-signed > div").append(b);
+  }
+
+  // Small dialog that asks for a reason (required)
+  function askReason(title, text, confirm) {
+    let dlg = $("#reason-dialog");
+    if (!dlg) {
+      dlg = document.createElement("dialog");
+      dlg.className = "modal";
+      dlg.id = "reason-dialog";
+      dlg.innerHTML = '<form class="modal__inner" method="dialog"><div><h2 class="modal__title"></h2><p class="modal__description"></p></div><div class="q"><label class="label" for="reason-text">Reason</label><textarea class="input textarea" id="reason-text" rows="3"></textarea><p class="field-error" hidden><span>Enter a reason.</span></p></div><div class="modal__actions"><button type="submit" class="btn btn-outline" value="cancel">Cancel</button><button type="submit" class="btn btn-primary" value="ok"></button></div></form>';
+      document.body.append(dlg);
+      dlg.querySelector('button[value="ok"]').addEventListener("click", (e) => {
+        if (!dlg.querySelector("textarea").value.trim()) {
+          e.preventDefault();
+          dlg.querySelector(".field-error").hidden = false;
+          dlg.querySelector("textarea").focus();
+        }
+      });
+    }
+    dlg.querySelector(".modal__title").textContent = title;
+    dlg.querySelector(".modal__description").textContent = text;
+    dlg.querySelector('button[value="ok"]').textContent = confirm;
+    dlg.querySelector("textarea").value = "";
+    dlg.querySelector(".field-error").hidden = true;
+    dlg.returnValue = "";
+    dlg.showModal();
+    return new Promise((resolve) => dlg.addEventListener("close", () => resolve(dlg.returnValue === "ok" ? dlg.querySelector("textarea").value.trim() : null), { once: true }));
+  }
+
   function lock() {
     locked = true;
+    ordersPanel?.update({ readOnly: true });
     $$("input, select, textarea, button", form).forEach((f) => {
       if (!f.closest(".form-section__summary") && f.id !== "toggle-sections") f.disabled = true;
     });
     $("#sign-button").hidden = true;
     $("#review-signed").hidden = false;
-    $("#review-signed-text").textContent = `Signed by ${review.signedBy} on ${fmtDateTime(review.signedAt)}. Status: reviewed.`;
-    // Printing instructions stays available after sign-off
+    $("#review-signed-text").textContent = `Signed by ${review.signedBy} on ${fmtDateTime(review.signedAt)}. Status: reviewed.${record.history?.length ? ` Reopened ${record.history.length}× before; earlier signed versions are kept in the history.` : ""}`;
+    reopenButton();
+    // Printing stays available after sign-off
     $("[data-print-instructions]").disabled = false;
+    $("[data-print-summary]").disabled = false;
     update({ findings: true });
   }
 
@@ -1193,10 +1618,130 @@
   tick();
   setInterval(tick, 30_000);
   restore();
+
+  // Page layout from clinic setup (UAT-13/14/15). Old encounters keep their version (EC-10).
+  const layoutUI = LayoutUI.apply({ page: "review", form, record, readOnly: locked, isAnswered: (q) => isAnswered(q), extraPending: (sec) => sec.querySelectorAll('.rec-card[data-state="pending"], .rec-card[data-state="stale"]').length });
+  layoutUI.fill(record);
+  layoutReady = true;
+
+  // Tests with approval and insurance status (UAT-17)
+  let ordersPanel = null;
+  if (typeof TestOrdersUI !== "undefined") {
+    ordersPanel = TestOrdersUI.mount($("[data-test-orders]"), record, { readOnly: locked || !can.orders, suggested: [], canOrder: can.orders });
+  }
+
+  // Referral suggestion not followed: say why (UAT-12, UAT-24)
+  (() => {
+    const decision = $('[name="r.ref.needed"]')?.closest(".subsection");
+    if (!decision) return;
+    decision.insertAdjacentHTML("beforeend", LayoutUI.questionHtml({ type: "textarea", required: true }, "r.ref.declineReason", "Why not the suggested referral?"));
+    const q = decision.lastElementChild;
+    q.dataset.declineReason = "";
+    q.hidden = true;
+    q.querySelector(".label").insertAdjacentHTML("beforeend", ' <span class="label__optional">(shown in the referral report)</span>');
+  })();
+
   update({ findings: true });
   syncToggle();
-  if (locked) {
+
+  // Typed values are a draft until saved (UAT-10)
+  const draft = Drafts.attach({
+    key: `review.${record.id}`,
+    form,
+    collect: () => ({ ...fullAnswers(), ...layoutUI.collect().answers, ...layoutUI.collect().custom }),
+    saved: () => {
+      const st = ScreeningStore.getById(record.id) ?? record;
+      const a = { ...(st.review?.answers ?? {}) };
+      if (!review.noteEdited) delete a["r.note"];
+      if (!review.instructionsEdited) delete a["r.instructions"];
+      const foreignSaved = Object.fromEntries(layoutUI.foreignNames.map((n) => [n, st.answers?.[n] ?? st.custom?.[n] ?? st.review?.answers?.[n]]).filter(([, v]) => v !== undefined));
+      return { ...a, ...foreignSaved };
+    },
+    apply: (values) => {
+      for (const f of form.elements) {
+        if (!f.name?.startsWith("r.") || f.name === "r.note" || f.name === "r.instructions" || f.disabled) continue;
+        if (f.type === "checkbox" || f.type === "radio") f.checked = false;
+        else f.value = "";
+      }
+      for (const [n, v] of Object.entries(values)) setField(n, v);
+      layoutUI.fill({ answers: values, custom: values, review: { answers: values } });
+      update();
+    },
+    enabled: () => holding && !locked,
+    save: () => saveRecord(),
+    onDiscard: () => ({ patient: record.fileNumber, record: record.id, clinicId: record.clinicId }),
+  });
+
+  // Stage tracker under the page header (UAT-07)
+  const header = $(".page-header");
+  let trackerEl = null;
+  const renderTracker = () => {
+    const next = EncounterUI.tracker(ScreeningStore.getById(record.id) ?? record);
+    trackerEl ? trackerEl.replaceWith(next) : header.after(next);
+    trackerEl = next;
+  };
+  renderTracker();
+
+  // An old copy of the page brought back with Back shows the current state (EC-05)
+  window.addEventListener("pageshow", (e) => {
+    if (e.persisted) location.reload();
+  });
+
+  if (record.status === "reviewed") {
     if (review.finalNote) setField("r.note", review.finalNote);
     lock();
+    renderTracker();
+  } else if (viewOnly) {
+    const box = el("div", "callout callout-warning", viewOnly);
+    box.setAttribute("role", "status");
+    trackerEl.after(box);
+    // A supervisor can free the file (UAT-09)
+    const latest = ScreeningStore.getById(record.id);
+    if (Access.can("lock.release") && latest?.holder && latest.holder.id !== user.id) {
+      const b = el("button", "btn btn-outline btn-sm", "Release lock");
+      b.type = "button";
+      b.addEventListener("click", async () => {
+        const reason = await askReason(`Release ${latest.holder.name}'s lock?`, "They will lose the ability to save until they reopen the file. Give a reason.", "Release lock");
+        if (reason && ScreeningStore.forceRelease(record.id, reason)) location.reload();
+      });
+      box.append(" ", b);
+    }
+    $$("input, select, textarea, button", form).forEach((f) => {
+      if (!f.closest(".form-section__summary")) f.disabled = true;
+    });
+    $("#sign-button").hidden = true;
+  } else {
+    // Sections the role can't act on are read-only
+    const lockNames = (prefix, allowed) => !allowed && $$(`[name^="${prefix}"]`, form).forEach((f) => (f.disabled = true));
+    lockNames("r.orders.", can.orders);
+    lockNames("r.ref.", can.referral);
+    lockNames("r.sign.", can.sign);
+    lockNames("r.med.", can.prescribe);
+    if (!can.prescribe) $('[name="r.med.text"]')?.closest(".q")?.insertAdjacentHTML("beforeend", '<p class="field-hint">Your role can\'t prescribe medication.</p>');
+    if (!can.sign) $("#sign-button").disabled = true;
+
+    // Save / Discard next to Sign
+    const actions = $(".form-actions", form);
+    const line = el("span", "draft-line");
+    const discardBtn = el("button", "btn btn-ghost", "Discard changes");
+    discardBtn.type = "button";
+    discardBtn.addEventListener("click", () => draft.discard());
+    const saveBtn = el("button", "btn btn-outline", "Save");
+    saveBtn.type = "button";
+    saveBtn.id = "save-review";
+    saveBtn.addEventListener("click", () => saveRecord());
+    const buttons = el("div", "form-actions__buttons");
+    buttons.append(discardBtn, saveBtn, $("#sign-button"));
+    actions.append(buttons);
+    $("#review-progress").after(line);
+    draft.onChange(({ dirty, sections }) => {
+      discardBtn.hidden = !dirty;
+      line.textContent = dirty ? `Unsaved changes: ${sections.join(", ")}` : "All changes saved";
+      line.classList.toggle("is-dirty", dirty);
+    });
+    const at = draft.restore();
+    if (at) showInfo(`Your unsaved changes from ${fmtClock(at)} were restored. Save to keep them, or discard them.`);
+    setInterval(() => holding && ScreeningStore.heartbeat(record.id, user), 60000);
+    window.addEventListener("pagehide", () => holding && ScreeningStore.release(record.id, user));
   }
 })();
